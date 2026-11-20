@@ -1,0 +1,23 @@
+node_modules/
+dist/
+build/
+coverage/
+test-results/
+playwright-report/
+.env
+.env.*
+!.env.example
+*.local
+*.log
+*.tsbuildinfo
+tmp/
+data/local/
+.DS_Store
+Thumbs.db
+
+# Tài liệu môn học, báo cáo nộp và file không liên quan mã nguồn: chỉ giữ ở máy, không đưa lên GitHub
+*.pdf
+*.docx
+*.zip
+deliverables/
+.claude/

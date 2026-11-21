@@ -10,12 +10,50 @@ import type { BlockId, Course, CourseGroup, GradOptionId } from "../types";
  */
 export const CURRICULUM_SOURCE = "CTĐT ngành Kỹ thuật phần mềm, khóa tuyển 2025 (QĐ 2818/QĐ-KHTN)";
 
-export const BLOCKS: { id: BlockId; name: string; required: number; section: string }[] = [
-  { id: "general", name: "Giáo dục đại cương", required: 56, section: "7.1" },
-  { id: "foundation", name: "Cơ sở ngành", required: 38, section: "7.2.1" },
-  { id: "major", name: "Ngành / Chuyên ngành", required: 34, section: "7.2.2–7.2.3" },
-  { id: "graduation", name: "Tốt nghiệp", required: 10, section: "7.2.4" },
+/**
+ * Bốn khối kiến thức. Tên viết hoa chữ cái đầu câu (đồng bộ với tên nhóm như “Tự chọn ngành /
+ * chuyên ngành”); `label` là nhãn dùng giữa câu, VD danh sách Nhiệm vụ ở Tổng quan.
+ */
+export const BLOCKS: {
+  id: BlockId;
+  name: string;
+  label: string;
+  required: number;
+  section: string;
+}[] = [
+  {
+    id: "general",
+    name: "Giáo dục đại cương",
+    label: "Khối giáo dục đại cương",
+    required: 56,
+    section: "7.1",
+  },
+  {
+    id: "foundation",
+    name: "Cơ sở ngành",
+    label: "Khối cơ sở ngành",
+    required: 38,
+    section: "7.2.1",
+  },
+  {
+    id: "major",
+    name: "Ngành / chuyên ngành",
+    label: "Khối ngành / chuyên ngành",
+    required: 34,
+    section: "7.2.2–7.2.3",
+  },
+  {
+    id: "graduation",
+    name: "Tốt nghiệp",
+    label: "Khối tốt nghiệp",
+    required: 10,
+    section: "7.2.4",
+  },
 ];
+
+/** Nhãn khối dùng giữa câu, VD “Khối ngành / chuyên ngành”. */
+export const blockLabel = (id: BlockId): string =>
+  BLOCKS.find((block) => block.id === id)?.label ?? id;
 
 /** Khối có thể dồn TC vượt của nhóm trước sang nhóm sau (mục 7.2.2.2 và 7.2.3). */
 export const POOLED_BLOCKS: BlockId[] = ["major"];

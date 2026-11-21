@@ -1,11 +1,12 @@
 import { useMemo, useRef, useState } from "react";
 import { navigate } from "../../app/nav";
-import { Confirm, Field, Hud, Mascot, Modal, Panel, toast, useNow } from "../../components/ui";
+import { Field, Hud, Mascot, Modal, Panel, toast, undoToast, useNow } from "../../components/ui";
 import { COURSE_BY_ID } from "../../data/curriculum";
 import { recordOf, scheduleCourses } from "../../domain/progress";
 import { MAX_SEMESTER } from "../../domain/rules";
 import { buildIcs, downloadText } from "../../lib/files";
-import { actions, useAppState } from "../../lib/store";
+import { actions, getState, useAppState } from "../../lib/store";
+import { keepWords } from "../../lib/text";
 import {
   DAY_NAMES,
   classesOverlap,
@@ -709,8 +710,6 @@ type Dialog =
   | { type: "editExam"; exam: ExamEntry }
   | { type: "detail"; item: ClassEntry }
   | { type: "editClass"; item: ClassEntry }
-  | { type: "deleteClass"; item: ClassEntry }
-  | { type: "deleteExam"; exam: ExamEntry }
   | null;
 
 export function ScheduleScreen() {
@@ -723,6 +722,24 @@ export function ScheduleScreen() {
   const [day, setDay] = useState(((now.getDay() + 6) % 7) + 1);
   const [dialog, setDialog] = useState<Dialog>(null);
   const touchX = useRef<number | null>(null);
+  // Xóa ngay, cho hoàn tác trong 10 giây (không hỏi xác nhận).
+  const deleteClass = (item: ClassEntry) => {
+    const before = getState().data;
+    actions.removeClass(item.id);
+    setDialog(null);
+    undoToast(
+      `Đã xóa lịch học ${courseName(item.courseId)} (${DAY_NAMES[item.day - 1]}, ${item.start}–${item.end}).`,
+      () => actions.restore(before, { classId: item.id }),
+    );
+  };
+  const deleteExam = (exam: ExamEntry) => {
+    const before = getState().data;
+    actions.removeExam(exam.id);
+    undoToast(
+      `Đã xóa lịch thi ${courseName(exam.courseId)} ngày ${shortDate(examDate(exam))}.`,
+      () => actions.restore(before, { examId: exam.id }),
+    );
+  };
   const semesters = useMemo(
     () => (filter === "all" ? Array.from({ length: current }, (_, i) => i + 1) : [filter]),
     [filter, current],
@@ -1019,7 +1036,7 @@ export function ScheduleScreen() {
                   onClick={() => setDialog({ type: "detail", item })}
                 >
                   <b style={{ fontWeight: 400, fontSize: "1.15rem" }}>
-                    {courseName(item.courseId)}
+                    {keepWords(courseName(item.courseId))}
                   </b>
                   <br />
                   {CLASS_KIND[item.kind]}
@@ -1089,10 +1106,7 @@ export function ScheduleScreen() {
                       >
                         Sửa
                       </button>
-                      <button
-                        className="btn btn-sm"
-                        onClick={() => setDialog({ type: "deleteExam", exam })}
-                      >
+                      <button className="btn btn-sm" onClick={() => deleteExam(exam)}>
                         Xóa
                       </button>
                     </div>
@@ -1128,7 +1142,7 @@ export function ScheduleScreen() {
           item={dialog.item}
           onClose={() => setDialog(null)}
           onEdit={() => setDialog({ type: "editClass", item: dialog.item })}
-          onDelete={() => setDialog({ type: "deleteClass", item: dialog.item })}
+          onDelete={() => deleteClass(dialog.item)}
         />
       )}
       {dialog?.type === "editClass" && (
@@ -1137,34 +1151,6 @@ export function ScheduleScreen() {
           week={slot?.week ?? dialog.item.weekFrom}
           data={data}
           onClose={() => setDialog(null)}
-        />
-      )}
-      {dialog?.type === "deleteClass" && (
-        <Confirm
-          title="Xóa lịch học"
-          message={`Xóa lịch học ${courseName(dialog.item.courseId)} (${DAY_NAMES[dialog.item.day - 1]}, ${dialog.item.start}–${dialog.item.end}, tuần ${dialog.item.weekFrom}–${dialog.item.weekTo})?`}
-          confirmLabel="Xóa"
-          danger
-          onCancel={() => setDialog(null)}
-          onConfirm={() => {
-            actions.removeClass(dialog.item.id);
-            setDialog(null);
-            toast("Đã xóa lịch học");
-          }}
-        />
-      )}
-      {dialog?.type === "deleteExam" && (
-        <Confirm
-          title="Xóa lịch thi"
-          message={`Xóa lịch thi ${courseName(dialog.exam.courseId)} ngày ${shortDate(examDate(dialog.exam))}?`}
-          confirmLabel="Xóa"
-          danger
-          onCancel={() => setDialog(null)}
-          onConfirm={() => {
-            actions.removeExam(dialog.exam.id);
-            setDialog(null);
-            toast("Đã xóa lịch thi");
-          }}
         />
       )}
     </>

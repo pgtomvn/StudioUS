@@ -544,6 +544,29 @@ Ghi lại các tương tác có ảnh hưởng đến sản phẩm, kiểm tra �
   nút “Xuất lên Google Calendar” tràn → thêm `size-adjust`.
 - Kiểm tra: `npm run check` 46/46, `npm run build` đạt; thử trên bản build ghi trong kế hoạch kiểm thử.
 
+## Lưu ý của tester ngày 21/11/2026
+
+- UIBUILD-16, root (Claude Code, mô hình Claude Opus 5.5). Prompt kèm 4 ảnh lưu ý của tester (chữ “Học kì” chìm ở
+  giao diện Thảo nguyên; dấu X thông báo ngày thi lệch; chữ bị ngắt dòng giữa từ; viết hoa “Khối Ngành / Chuyên
+  ngành” không đồng bộ; ô thông tin sinh viên trống; gợi ý thêm “Hoàn tác” 10 giây thay cho hỏi xác nhận): “Xem và thử
+  lại những lưu ý này từ tester, nếu có thì fix lại những chỗ đó”.
+- Nhắn thêm giữa lượt: “Cần đang học và buổi học tới được rồi”; “Mình muốn khối bên trái bằng độ cao của hai khối bên
+  phải và bố cục chỗ hành trang thiết kế cho thẩm mỹ hơn…”; “À thôi mình nghĩ là trang trí gì thêm chỗ đó được rồi…”;
+  “Thôi bỏ trang trí luôn đi, nhìn không hợp”. Kết quả cuối: không thêm nội dung vào thẻ hồ sơ, chỉ giữ việc cân đáy
+  hai cột (khối Kỹ năng giãn).
+- AI tự quyết định: nhãn nằm thẳng trên ảnh nền dùng ô màu thanh bên; danh sách Nhiệm vụ gộp khối vào dòng phụ dưới
+  tên; danh sách từ ghép dùng khi hiển thị (`src/lib/text.ts`) vì CSS không tách từ tiếng Việt; “Đặt lại toàn bộ” vẫn
+  giữ bước gõ RESET rồi thêm Hoàn tác; hoàn tác có phạm vi để không xóa thay đổi khác; thêm hoàn tác cho nạp dữ liệu
+  mẫu và khôi phục từ file vì cũng ghi đè dữ liệu.
+- File sửa: `src/components/ui.tsx`, `src/lib/store.ts`, `src/lib/text.ts` (mới), `src/data/curriculum.ts`,
+  `src/domain/progress.ts`, `src/features/curriculum/CoursesScreen.tsx`, `src/features/dashboard/DashboardScreen.tsx`,
+  `src/features/data-management/DataScreen.tsx`, `src/features/schedule/ScheduleScreen.tsx`, `src/styles/app.css`,
+  `tests/unit/text.test.ts`, `tests/unit/undo.test.ts` (mới), README và tài liệu.
+- Điều chỉnh sau khi thử: `text-wrap: balance` vẫn tách giữa từ ở 1120 px → thêm `keepWords`; ô thời khóa biểu hẹp bị
+  “Vi tích phâ / n 2” khi giữ từ ghép → bỏ `keepWords` ở ô lưới; thẻ hồ sơ qua ba phương án (bốn dòng thông tin, hai
+  dòng, túi đồ trang trí) rồi bỏ theo yêu cầu người dùng, xóa luôn hàm tính buổi học tới không còn dùng.
+- Kiểm tra: `npm run check` 54/54, `npm run build` đạt; thử trên bản build ghi trong kế hoạch kiểm thử.
+
 ## Mẫu cho các bước tiếp theo
 
 - Ngày, người thực hiện, công cụ/mô hình nếu có:
@@ -618,3 +641,11 @@ Trước khi nộp: bổ sung prompt tiêu biểu cho phân tích, thiết kế 
 - Prompt: “Return commit vừa rồi và commit lại bản mới. Phần README là tiếng Anh nhé. Mấy cái thông tin lời văn liên quan đến báo cáo đồ án thì bỏ hết. Phần trạng thái chỉ nhiêu đây thôi: … Bỏ mục quy trình làm việc”.
 - Sửa `README.md`: dịch toàn bộ sang tiếng Anh; bỏ đoạn mô tả báo cáo UI/UX, ghi chú file chỉ giữ ở máy và mục Quy trình làm việc; phần Status giữ đúng nội dung người dùng đưa.
 - Gỡ hai commit đã push và tạo lại một commit gốc mới, force push lên `main`. Kiểm tra: `npm run check` đạt (46/46).
+
+## SRCREPORT-01 — Rà soát báo cáo Bộ mã nguồn & HDSD và chụp ảnh giao diện (22/11/2026, root)
+
+- Prompt: “Bạn review và xem lại bản báo cáo như vậy là chi tiết và đúng chưa, và có thể kèm theo một tệp zip các ảnh giao diện để chèn vào bản báo cáo nhé” (kèm `Bao_cao_Bo_ma_nguon_va_Huong_dan_su_dung_Nhom6.docx`).
+- Đọc báo cáo bằng script Python trích XML (máy không có pandoc); không sửa file Word gốc.
+- Đối chiếu với `src/lib/storage/storage.ts`, `src/data/curriculum.ts`, `src/data/sample.demo.ts`, các màn hình, `package.json`, `docs/data-sources.md`; chạy `npm run check` (54/54) và `npm run build` (852 kB).
+- Chụp 19 ảnh từ `dist/index.html` qua `file://` bằng Edge headless điều khiển qua DevTools Protocol (script trong scratchpad, không thêm dependency); ẩn lời thoại linh vật vì đổi theo giờ. Đã xem lại từng nhóm ảnh, chụp lại một lần để bỏ thông báo thừa và đổi định dạng ngày sang vi-VN.
+- Kết quả: `deliverables/StudioUS_anh-giao-dien_Nhom6.zip` (19 PNG + danh sách chú thích). Nhận xét báo cáo gửi người dùng trong chat; không sửa mã ứng dụng, không commit/push.

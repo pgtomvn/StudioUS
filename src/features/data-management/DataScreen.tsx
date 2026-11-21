@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { takeFocus } from "../../app/nav";
-import { Avatar, Field, Hud, Icon, Modal, Panel, toast } from "../../components/ui";
+import { Avatar, Field, Hud, Icon, Modal, Panel, toast, undoToast } from "../../components/ui";
 import { semesterInfoStatus } from "../../domain/progress";
 import { MAX_SEMESTER } from "../../domain/rules";
 import { createSampleData } from "../../data/sample.demo";
@@ -222,10 +222,11 @@ function ImportPanel() {
 
   const restore = () => {
     if (!picked?.result.ok) return;
+    const before = getState().data;
     actions.replaceData(picked.result.data);
     setConfirming(false);
     setPicked(null);
-    toast("Đã khôi phục dữ liệu");
+    undoToast("Đã khôi phục dữ liệu từ file.", () => actions.restoreAll(before));
   };
 
   return (
@@ -335,9 +336,10 @@ function ResetPanel() {
                 className="btn btn-danger"
                 disabled={text !== "RESET"}
                 onClick={() => {
+                  const before = getState().data;
                   actions.resetAll();
                   close();
-                  toast("Đã đặt lại toàn bộ dữ liệu");
+                  undoToast("Đã đặt lại toàn bộ dữ liệu.", () => actions.restoreAll(before));
                 }}
               >
                 Xóa tất cả
@@ -347,7 +349,8 @@ function ResetPanel() {
         >
           <p>
             Bạn sẽ mất: hồ sơ sinh viên, toàn bộ trạng thái và điểm học phần, chứng chỉ ngoại ngữ,
-            lịch học và lịch thi. Không thể hoàn tác.
+            lịch học và lịch thi. Sau khi xóa chỉ có 10 giây để bấm “Hoàn tác”, nên xuất sao lưu
+            trước.
           </p>
           <Field label="Gõ chữ RESET để xác nhận">
             <input
@@ -457,8 +460,9 @@ export function DataScreen() {
           <button
             className="btn"
             onClick={() => {
+              const before = getState().data;
               actions.replaceData(createSampleData());
-              toast("Đã nạp dữ liệu mẫu (minh họa)");
+              undoToast("Đã nạp dữ liệu mẫu (minh họa).", () => actions.restoreAll(before));
             }}
           >
             Nạp dữ liệu mẫu

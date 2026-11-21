@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { navigate, takeFocus } from "../../app/nav";
-import { Bar, Confirm, Hud, Icon, Mascot, Modal, Panel } from "../../components/ui";
+import { Bar, Hud, Icon, Mascot, Modal, Panel, undoToast } from "../../components/ui";
 import {
   BLOCKS,
   CONDITION_COURSES,
@@ -27,7 +27,8 @@ import {
   languageResult,
   parseScore,
 } from "../../domain/rules";
-import { actions, useAppState } from "../../lib/store";
+import { actions, getState, useAppState } from "../../lib/store";
+import { keepWords } from "../../lib/text";
 import type {
   AppData,
   BlockId,
@@ -116,32 +117,42 @@ function ScoreInput(props: { courseId: string; score: number | null; disabled: b
   );
 }
 
-type Pending =
-  { type: "status"; status: CourseStatus } | { type: "semester" } | { type: "untick" } | null;
-
 function CourseRow(props: { course: Course; group: CourseGroup; data: AppData; focus: boolean }) {
   const { course, group, data } = props;
   const record = recordOf(data, course.id);
   const chosen = isChosen(data, group, course.id);
   const other = chosen ? undefined : takenElsewhere(data, group, course.id);
-  const [pending, setPending] = useState<Pending>(null);
   const hasScore = record.status === "done" && record.score !== null;
   const converted = hasScore ? convertScore(record.score!) : null;
   const passed = hasScore && isPass(record.score);
   const current = data.profile.currentSemester;
   const ahead = chosen && record.semester !== null && record.semester > current;
 
+  // Thao tác làm mất kết quả đã nhập: làm ngay, cho hoàn tác trong 10 giây (không hỏi xác nhận).
+  const undoRecord = (text: string) => {
+    const before = getState().data;
+    return () => undoToast(text, () => actions.restore(before, { records: [course.id] }));
+  };
   const changeSemester = (value: string) => {
-    if (!value && (record.status !== "todo" || record.score !== null))
-      return setPending({ type: "semester" });
+    if (!value && (record.status !== "todo" || record.score !== null)) {
+      const notify = undoRecord(
+        `Đã bỏ học kỳ của ${course.name}${hasScore ? ` và xóa điểm ${record.score}` : ""}.`,
+      );
+      actions.setRecord(course.id, { semester: null });
+      return notify();
+    }
     actions.setRecord(course.id, { semester: value ? Number(value) : null });
   };
   const changeStatus = (status: CourseStatus) => {
-    if (hasScore && status !== "done") setPending({ type: "status", status });
-    else actions.setRecord(course.id, { status });
+    if (hasScore && status !== "done") {
+      const notify = undoRecord(`Đã xóa điểm ${record.score} của ${course.name}.`);
+      actions.setRecord(course.id, { status, score: null });
+      return notify();
+    }
+    actions.setRecord(course.id, { status });
   };
   const toggle = (checked: boolean) => {
-    if (!checked && hasData(data, course.id)) return setPending({ type: "untick" });
+    if (!checked && hasData(data, course.id)) return untickWithUndo(group, course);
     actions.toggleSelection(group.id, course.id, checked);
   };
 
@@ -179,7 +190,7 @@ function CourseRow(props: { course: Course; group: CourseGroup; data: AppData; f
       </span>
       <span className="c-code">{course.id}</span>
       <span className="c-name">
-        {course.name}
+        {keepWords(course.name)}
         {(course.note || course.origin || other) && (
           <small className="c-plan">
             {[course.note, course.origin, other && `đã chọn ở “${other.title}”`]
@@ -253,47 +264,19 @@ function CourseRow(props: { course: Course; group: CourseGroup; data: AppData; f
           </button>
         </div>
       )}
-
-      {pending?.type === "status" && (
-        <Confirm
-          title="Xóa điểm đã nhập?"
-          message={`${course.name} đang có điểm ${record.score}. Đổi sang “${STATUS_LABEL[pending.status]}” sẽ xóa điểm này.`}
-          confirmLabel="Xóa điểm"
-          danger
-          onCancel={() => setPending(null)}
-          onConfirm={() => {
-            actions.setRecord(course.id, { status: pending.status, score: null });
-            setPending(null);
-          }}
-        />
-      )}
-      {pending?.type === "semester" && (
-        <Confirm
-          title="Bỏ học kỳ?"
-          message={`Bỏ học kỳ của ${course.name} sẽ đưa trạng thái về “Chưa học” và xóa điểm đã nhập.`}
-          confirmLabel="Bỏ học kỳ"
-          danger
-          onCancel={() => setPending(null)}
-          onConfirm={() => {
-            actions.setRecord(course.id, { semester: null });
-            setPending(null);
-          }}
-        />
-      )}
-      {pending?.type === "untick" && (
-        <Confirm
-          title="Bỏ chọn học phần?"
-          message={`Bỏ chọn ${course.name} sẽ xóa học kỳ, trạng thái và điểm đã nhập của học phần này.`}
-          confirmLabel="Bỏ chọn"
-          danger
-          onCancel={() => setPending(null)}
-          onConfirm={() => {
-            actions.toggleSelection(group.id, course.id, false);
-            setPending(null);
-          }}
-        />
-      )}
     </div>
+  );
+}
+
+/** Bỏ tick học phần tự chọn đã có kết quả: xóa ngay, cho hoàn tác (tick lại và trả kết quả). */
+function untickWithUndo(group: CourseGroup, course: Course) {
+  const before = getState().data;
+  actions.toggleSelection(group.id, course.id, false);
+  undoToast(`Đã bỏ chọn ${course.name} (xóa học kỳ, trạng thái, điểm).`, () =>
+    actions.restore(before, {
+      records: [course.id],
+      select: { groupId: group.id, courseId: course.id },
+    }),
   );
 }
 
@@ -319,7 +302,6 @@ function CourseHead() {
 function ElectivePicker({ group, onClose }: { group: CourseGroup; onClose: () => void }) {
   const { data } = useAppState();
   const [query, setQuery] = useState("");
-  const [untick, setUntick] = useState<Course | null>(null);
   const picked = data.selections[group.id] ?? [];
   const pickedCredits = picked.reduce((sum, id) => sum + (COURSE_BY_ID.get(id)?.credits ?? 0), 0);
   const list = group.courseIds
@@ -377,7 +359,8 @@ function ElectivePicker({ group, onClose }: { group: CourseGroup; onClose: () =>
                   checked={chosen}
                   disabled={!!other}
                   onChange={(event) => {
-                    if (!event.target.checked && hasData(data, course.id)) setUntick(course);
+                    if (!event.target.checked && hasData(data, course.id))
+                      untickWithUndo(group, course);
                     else actions.toggleSelection(group.id, course.id, event.target.checked);
                   }}
                 />
@@ -386,7 +369,7 @@ function ElectivePicker({ group, onClose }: { group: CourseGroup; onClose: () =>
                 </span>
                 <span className="pick-code">{course.id}</span>
                 <span className="pick-name">
-                  {course.name}
+                  {keepWords(course.name)}
                   {other && <small className="dim"> · đã chọn ở “{other.title}”</small>}
                 </span>
                 <span className="badge">{course.origin}</span>
@@ -397,19 +380,6 @@ function ElectivePicker({ group, onClose }: { group: CourseGroup; onClose: () =>
         })}
         {list.length === 0 && <li className="dim">Không tìm thấy học phần nào.</li>}
       </ul>
-      {untick && (
-        <Confirm
-          title="Bỏ chọn học phần?"
-          message={`Bỏ chọn ${untick.name} sẽ xóa học kỳ, trạng thái và điểm đã nhập của học phần này.`}
-          confirmLabel="Bỏ chọn"
-          danger
-          onCancel={() => setUntick(null)}
-          onConfirm={() => {
-            actions.toggleSelection(group.id, untick.id, false);
-            setUntick(null);
-          }}
-        />
-      )}
     </Modal>
   );
 }
@@ -434,7 +404,7 @@ function GroupSection(props: {
         <span className="group-sec" title={`Mục ${group.section} của CTĐT`}>
           {props.number}
         </span>
-        <h3 className="group-title">{group.title}</h3>
+        <h3 className="group-title">{keepWords(group.title)}</h3>
         <span className="badge">{group.rule}</span>
         {group.mode === "elective" && progress && (
           <span className={`badge ${short > 0 ? "warn" : "good"}`}>
@@ -480,7 +450,6 @@ function GroupSection(props: {
 
 /* ------------------------------------------------------------------ khối Tốt nghiệp */
 function GraduationChooser({ data }: { data: AppData }) {
-  const [pending, setPending] = useState<GradOptionId | null>(null);
   const [choosing, setChoosing] = useState(false);
   const chosen = GRADUATION_OPTIONS.find((option) => option.id === data.gradOption);
   const hasResults = GROUPS.some(
@@ -493,9 +462,22 @@ function GraduationChooser({ data }: { data: AppData }) {
 
   const pick = (id: GradOptionId) => {
     if (id === data.gradOption) return setChoosing(false);
-    if (hasResults) return setPending(id);
+    const before = getState().data;
+    const oldGroups = GROUPS.filter(
+      (group) => group.gradOption && group.gradOption === data.gradOption,
+    );
     actions.setGradOption(id);
     setChoosing(false);
+    if (hasResults)
+      undoToast(
+        `Đã đổi phương án tốt nghiệp; kết quả của “${chosen?.name ?? "phương án cũ"}” đã xóa.`,
+        () =>
+          actions.restore(before, {
+            gradOption: true,
+            records: oldGroups.flatMap((group) => group.courseIds),
+            selections: oldGroups.map((group) => group.id),
+          }),
+      );
   };
 
   if (chosen && !choosing)
@@ -536,20 +518,6 @@ function GraduationChooser({ data }: { data: AppData }) {
           </button>
         ))}
       </div>
-      {pending && (
-        <Confirm
-          title="Đổi phương án tốt nghiệp"
-          message="Đổi phương án sẽ xóa kết quả đã nhập của phương án hiện tại?"
-          confirmLabel="Xác nhận"
-          danger
-          onCancel={() => setPending(null)}
-          onConfirm={() => {
-            actions.setGradOption(pending);
-            setPending(null);
-            setChoosing(false);
-          }}
-        />
-      )}
     </>
   );
 }

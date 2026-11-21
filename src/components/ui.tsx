@@ -251,6 +251,10 @@ interface ToastItem {
   id: number;
   text: string;
   error: boolean;
+  /** Nút hành động (VD “Hoàn tác”); bấm thì chạy rồi đóng thông báo. */
+  action?: { label: string; run: () => void };
+  /** Thời gian tự tắt (ms); 0 = giữ đến khi đóng. */
+  ms: number;
 }
 let toasts: ToastItem[] = [];
 let toastId = 0;
@@ -263,11 +267,33 @@ function dismissToast(id: number) {
   setToasts(toasts.filter((item) => item.id !== id));
 }
 /** Thành công tự tắt sau 3 giây; lỗi giữ đến khi người dùng đóng. */
-export function toast(text: string, error = false) {
+export function toast(
+  text: string,
+  options: boolean | { error?: boolean; action?: ToastItem["action"]; ms?: number } = {},
+) {
+  const { error = false, action, ms } = typeof options === "boolean" ? { error: options } : options;
   const id = ++toastId;
-  setToasts([...toasts, { id, text, error }]);
+  const life = ms ?? (error ? 0 : 3000);
+  setToasts([...toasts, { id, text, error, action, ms: life }]);
   sfx(error ? "error" : "pop", { soft: !error });
-  if (!error) setTimeout(() => dismissToast(id), 3000);
+  if (life > 0) setTimeout(() => dismissToast(id), life);
+}
+
+/** Thời gian cho phép hoàn tác sau một thao tác xóa/ghi đè. */
+export const UNDO_MS = 10_000;
+
+/** Thông báo kèm nút “Hoàn tác” trong 10 giây (thay cho hộp xác nhận trước khi xóa). */
+export function undoToast(text: string, undo: () => void) {
+  toast(text, {
+    ms: UNDO_MS,
+    action: {
+      label: "Hoàn tác",
+      run: () => {
+        undo();
+        toast("Đã hoàn tác");
+      },
+    },
+  });
 }
 
 export function ToastHost() {
@@ -287,9 +313,31 @@ export function ToastHost() {
           role={item.error ? "alert" : "status"}
         >
           <span>{item.text}</span>
-          <button onClick={() => dismissToast(item.id)} aria-label="Đóng thông báo">
+          {item.action && (
+            <button
+              className="toast-action"
+              onClick={() => {
+                dismissToast(item.id);
+                item.action!.run();
+              }}
+            >
+              {item.action.label}
+            </button>
+          )}
+          <button
+            className="toast-close"
+            onClick={() => dismissToast(item.id)}
+            aria-label="Đóng thông báo"
+          >
             ✕
           </button>
+          {item.action && item.ms > 0 && (
+            <i
+              className="toast-timer"
+              style={{ animationDuration: `${item.ms}ms` }}
+              aria-hidden="true"
+            />
+          )}
         </div>
       ))}
     </div>

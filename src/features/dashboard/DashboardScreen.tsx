@@ -1,10 +1,11 @@
 import { navigate } from "../../app/nav";
-import { Bar, Icon, Mascot, Panel, toast, useNow } from "../../components/ui";
+import { Bar, Icon, Mascot, Panel, undoToast, useNow } from "../../components/ui";
 import { COURSE_BY_ID } from "../../data/curriculum";
 import { createSampleData } from "../../data/sample.demo";
 import { computeStats, formatGpa, semesterInfoStatus } from "../../domain/progress";
 import { TOTAL_CREDITS_REQUIRED, rankOf } from "../../domain/rules";
-import { actions, useAppState } from "../../lib/store";
+import { actions, getState, useAppState } from "../../lib/store";
+import { keepWords } from "../../lib/text";
 import {
   countdownParts,
   examDate,
@@ -48,8 +49,9 @@ export function DashboardScreen() {
           <button
             className="btn"
             onClick={() => {
+              const before = getState().data;
               actions.replaceData(createSampleData());
-              toast("Đã nạp dữ liệu mẫu (minh họa)");
+              undoToast("Đã nạp dữ liệu mẫu (minh họa).", () => actions.restoreAll(before));
             }}
           >
             Xem thử dữ liệu mẫu
@@ -162,7 +164,7 @@ export function DashboardScreen() {
                 </div>
                 <div className="exam-info">
                   <div className="display">
-                    {COURSE_BY_ID.get(exam.courseId)?.name ?? exam.courseId}
+                    {keepWords(COURSE_BY_ID.get(exam.courseId)?.name ?? exam.courseId)}
                   </div>
                   <div>
                     {EXAM_KIND[exam.kind]} · {shortDate(examDate(exam))} · {exam.time}
@@ -207,9 +209,8 @@ export function DashboardScreen() {
           ) : (
             <>
               <div className="quest-head">
-                <span>Khối kiến thức</span>
+                <span>Học phần · khối kiến thức</span>
                 <span>Loại HP</span>
-                <span>Học phần</span>
                 <span>Cảnh báo</span>
               </div>
               <div className="quest-scroll">
@@ -219,12 +220,14 @@ export function DashboardScreen() {
                     className={`quest-row${warning.tone === "failed" ? " is-failed" : ""}`}
                     onClick={() => navigate("courses", warning.focus)}
                   >
-                    <span className="q-block">{warning.blockName}</span>
+                    <span className="q-subject">
+                      {keepWords(warning.subject)}
+                      <small className="q-block">{keepWords(warning.blockName)}</small>
+                    </span>
                     <span className="q-kind">
                       <span className="badge">{warning.kind}</span>
                     </span>
-                    <span className="q-subject">{warning.subject}</span>
-                    <span className="q-message">{warning.message}</span>
+                    <span className="q-message">{keepWords(warning.message)}</span>
                   </button>
                 ))}
               </div>

@@ -44,6 +44,19 @@ let state: AppState = {
   saveOk: kv !== null,
 };
 
+/** Phần dữ liệu cần lấy lại khi hoàn tác (xem `actions.restore`). */
+export interface UndoScope {
+  /** Kết quả học phần (học kỳ, trạng thái, điểm) cần trả lại. */
+  records?: string[];
+  /** Danh sách chọn của các nhóm cần trả lại nguyên vẹn. */
+  selections?: string[];
+  /** Tick lại một học phần tự chọn (giữ các học phần khác đã tick sau đó). */
+  select?: { groupId: string; courseId: string };
+  gradOption?: boolean;
+  classId?: string;
+  examId?: string;
+}
+
 const listeners = new Set<() => void>();
 function emit() {
   for (const listener of listeners) listener();
@@ -282,6 +295,49 @@ export const actions = {
   },
   markExported() {
     commit({ ...state.data, meta: { ...state.data.meta, lastExportAt: new Date().toISOString() } });
+  },
+  /**
+   * Hoàn tác có phạm vi: lấy lại từ `before` đúng phần vừa đổi, giữ nguyên các thay đổi khác
+   * người dùng làm sau đó (trong lúc thông báo “Hoàn tác” còn hiện).
+   */
+  restore(before: AppData, scope: UndoScope) {
+    const data = state.data;
+    const records = { ...data.records };
+    for (const id of scope.records ?? []) {
+      if (before.records[id]) records[id] = before.records[id];
+      else delete records[id];
+    }
+    const selections = { ...data.selections };
+    for (const id of scope.selections ?? []) {
+      if (before.selections[id]) selections[id] = before.selections[id];
+      else delete selections[id];
+    }
+    if (scope.select) {
+      const { groupId, courseId } = scope.select;
+      const current = selections[groupId] ?? [];
+      if (!current.includes(courseId)) selections[groupId] = [...current, courseId];
+    }
+    const putBack = <T extends { id: string }>(list: T[], old: T[], id?: string) => {
+      const index = old.findIndex((item) => item.id === id);
+      if (index < 0 || list.some((item) => item.id === id)) return list;
+      return [...list.slice(0, index), old[index], ...list.slice(index)];
+    };
+    commit({
+      ...data,
+      records,
+      selections,
+      gradOption: scope.gradOption ? before.gradOption : data.gradOption,
+      classes: putBack(data.classes, before.classes, scope.classId),
+      exams: putBack(data.exams, before.exams, scope.examId),
+    });
+    react({ face: "happy", motion: "hop", say: "Hoàn tác xong, mọi thứ như cũ nhé!", sound: null });
+  },
+  /** Hoàn tác thao tác ghi đè toàn bộ (đặt lại, nạp dữ liệu mẫu, khôi phục từ file). */
+  restoreAll(before: AppData) {
+    commit(before);
+    state = { ...state, loadStatus: "ok" };
+    emit();
+    react({ face: "happy", motion: "dance", say: "Dữ liệu cũ về rồi, hú hồn!", sound: null });
   },
   replaceData(data: AppData) {
     commit(data);

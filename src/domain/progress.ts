@@ -1,4 +1,11 @@
-import { BLOCKS, COURSE_BY_ID, GROUPS, PE_GROUP, POOLED_BLOCKS } from "../data/curriculum";
+import {
+  BLOCKS,
+  COURSE_BY_ID,
+  GROUPS,
+  PE_GROUP,
+  POOLED_BLOCKS,
+  blockLabel,
+} from "../data/curriculum";
 import type {
   AppData,
   BlockId,
@@ -147,7 +154,6 @@ function spread(groups: CourseGroup[], amounts: number[], pooled: boolean): numb
 export function computeStats(data: AppData): Stats {
   const entries = activeEntries(data);
   const groups = activeGroups(data);
-  const blockName = (id: BlockId) => BLOCKS.find((block) => block.id === id)?.name ?? id;
   let doing = 0;
   let sum10 = 0;
   let scoredCredits = 0;
@@ -170,7 +176,7 @@ export function computeStats(data: AppData): Stats {
     warnings.push({
       key: course.id,
       block: group.block,
-      blockName: `Khối ${blockName(group.block)}`,
+      blockName: blockLabel(group.block),
       kind: course.kind,
       subject: course.name,
       message: failed
@@ -214,7 +220,7 @@ export function computeStats(data: AppData): Stats {
         warnings.push({
           key: `group-${group.id}`,
           block: block.id,
-          blockName: `Khối ${block.name}`,
+          blockName: block.label,
           kind: "TC",
           subject: group.title,
           message: `Chọn thêm ${progress.selectShortfall} TC.`,
@@ -236,7 +242,7 @@ export function computeStats(data: AppData): Stats {
     warnings.push({
       key: "grad-option",
       block: "graduation",
-      blockName: "Khối Tốt nghiệp",
+      blockName: blockLabel("graduation"),
       kind: "TC",
       subject: "Phương án tốt nghiệp",
       message: "Chưa chọn phương án.",

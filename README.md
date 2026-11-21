@@ -88,6 +88,7 @@ The sources of the course catalog and grading rules are noted at the top of `src
 - **Typography:** body text uses the Galmuri9 pixel font (full Vietnamese diacritics), headings use Handjet; screens narrower than 768 px get extra line and letter spacing.
 - **Timetable & Exams (TKB & Thi):** choose Semester 1 … current semester or **All** (Semester 1 to the current one). Weeks always start at Week 1 from the semester start date. Each class is **Theory** or **Practice** (a course can have both); the session type is shown on a line under the course name on the timetable, together with time and room.
 - **Data (Dữ liệu):** profile and **semester information** (start and end dates) must be filled in from Semester 1 to the current one; back up/restore a `.json` file, reset data.
+- **Undo instead of confirmation:** clearing a grade, removing a course's semester, unticking an elective, changing the graduation option, deleting a class or an exam happen immediately and show a notification with an **Undo** (Hoàn tác) button for 10 seconds (a bar counts down). Undo only restores what was just removed and keeps other edits made in the meantime. Resetting all data still asks you to type RESET, then also offers Undo; loading the sample data and restoring from a file can be undone the same way.
 
 ## Mascot
 

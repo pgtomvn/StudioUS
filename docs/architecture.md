@@ -32,7 +32,7 @@ Phiên bản 2 (12/11/2026) thêm: `selections` (môn tự chọn đã tick theo
 
 ## Trạng thái khởi tạo
 
-Đã có giao diện bốn màn hình chạy được (bảng học phần chuyển sang dạng thẻ ở màn hình ≤ 1280 px, vì bảng 11 cột cần hàng rộng khoảng 962 px), lưu LocalStorage và build một-file. Danh mục học phần (`src/data/curriculum.ts`) chép từ CTĐT chính thức; quy tắc điểm (`src/domain/rules.ts`) theo báo cáo phác thảo UI/UX (người dùng chốt 12/11/2026), chưa đối chiếu trực tiếp quy chế đào tạo. Khối ngành/chuyên ngành dùng cách dồn TC vượt của mục 7.2.2.1 sang 7.2.2.2 và tự chọn tự do (CTĐT mục 7.2.2.2, 7.2.3). Chưa có bằng chứng nghiệm thu ngoại tuyến trên máy thật (ngắt mạng, đóng/mở trình duyệt).
+Đã có giao diện bốn màn hình chạy được (bảng học phần chuyển sang dạng thẻ ở màn hình ≤ 1365 px, vì bảng 11 cột cần hàng rộng khoảng 962 px và cột tên ≥ 230 px), lưu LocalStorage và build một-file. Danh mục học phần (`src/data/curriculum.ts`) chép từ CTĐT chính thức; quy tắc điểm (`src/domain/rules.ts`) theo báo cáo phác thảo UI/UX (người dùng chốt 12/11/2026), chưa đối chiếu trực tiếp quy chế đào tạo. Khối ngành/chuyên ngành dùng cách dồn TC vượt của mục 7.2.2.1 sang 7.2.2.2 và tự chọn tự do (CTĐT mục 7.2.2.2, 7.2.3). Chưa có bằng chứng nghiệm thu ngoại tuyến trên máy thật (ngắt mạng, đóng/mở trình duyệt).
 
 ## Tổ chức thư mục
 
@@ -71,3 +71,7 @@ Không phụ thuộc CDN, font, icon, API hay dịch vụ AI trực tuyến tron
 LocalStorage gắn với origin: đổi giao thức, hostname, cổng hoặc hồ sơ trình duyệt có thể tạo vùng dữ liệu khác. Xóa dữ liệu trang hoặc dùng chế độ riêng tư có thể làm mất dữ liệu. Cơ chế sao lưu/khôi phục cần được xác định khi thiết kế màn hình quản lý dữ liệu.
 
 Không cần backend hoặc tài khoản trực tuyến trong phạm vi đề bài. Chỉ dùng dữ liệu giả khi phát triển; không lưu mật khẩu cổng sinh viên vào LocalStorage. Nếu bổ sung server hoặc chia sẻ hồ sơ về sau, cần thiết kế xác thực và kiểm tra quyền sở hữu trước khi đưa dữ liệu thật lên server.
+
+Hoàn tác (21/11/2026, UIBUILD-16): thao tác xóa/ghi đè không còn hỏi xác nhận (trừ “Đặt lại toàn bộ” vẫn gõ RESET) mà làm ngay rồi hiện thông báo “Hoàn tác” 10 giây (`undoToast` trong `src/components/ui.tsx`). `actions.restore(before, scope)` trong `src/lib/store.ts` chỉ lấy lại phần vừa đổi (kết quả học phần, danh sách chọn, phương án tốt nghiệp, một lịch học/lịch thi) nên giữ các thay đổi khác làm trong lúc đó; `actions.restoreAll(before)` dùng cho đặt lại, nạp dữ liệu mẫu, khôi phục từ file. Ảnh chụp chỉ nằm trong bộ nhớ, tải lại trang là mất.
+
+Xuống dòng tiếng Việt: trình duyệt chỉ ngắt ở dấu cách nên hay tách đôi một từ ghép. `keepWords` (`src/lib/text.ts`) nối các từ ghép thường gặp trong tên học phần, tên nhóm và câu cảnh báo bằng dấu cách không ngắt khi hiển thị (danh sách Nhiệm vụ, tên môn, tên nhóm, thẻ ngày ở TKB, lịch thi); dữ liệu gốc và tìm kiếm không đổi. Không dùng trong ô thời khóa biểu dạng lưới vì ô quá hẹp.

@@ -283,8 +283,11 @@ export function summarize(data: AppData): DataSummary {
   };
 }
 
-/** Tên file sao lưu theo chức năng F-06 của báo cáo phân tích yêu cầu. */
-export const EXPORT_FILE_NAME = "student_k2026.json";
+/** Tên file sao lưu: student_k26_YYYY-MM-DD.json (ngày xuất file). */
+export function exportFileName(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `student_k26_${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}.json`;
+}
 
 export type ImportResult =
   | { ok: true; data: AppData; summary: DataSummary; savedAt: string | null }

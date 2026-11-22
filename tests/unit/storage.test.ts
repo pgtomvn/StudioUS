@@ -3,7 +3,7 @@ import {
   CORRUPT_BACKUP_KEY,
   DATA_KEY,
   createDefaultData,
-  EXPORT_FILE_NAME,
+  exportFileName,
   loadData,
   saveData,
   validateImport,
@@ -89,7 +89,7 @@ describe("kiểm tra file nhập", () => {
   });
 
   it("đặt tên file sao lưu theo ngày", () => {
-    expect(EXPORT_FILE_NAME).toBe("student_k2026.json");
+    expect(exportFileName(new Date(2026, 10, 8))).toBe("student_k26_2026-11-08.json");
   });
 });
 

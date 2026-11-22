@@ -8,7 +8,7 @@ import { SAMPLES } from "../../data/sample.demo";
 import { downloadText, fileToAvatar } from "../../lib/files";
 import {
   DATA_VERSION,
-  EXPORT_FILE_NAME,
+  exportFileName,
   summarize,
   validateImport,
   type ImportResult,
@@ -26,7 +26,7 @@ import {
 function exportBackup() {
   actions.markExported();
   const data = getState().data;
-  downloadText(EXPORT_FILE_NAME, JSON.stringify(data, null, 2), "application/json");
+  downloadText(exportFileName(new Date()), JSON.stringify(data, null, 2), "application/json");
   toast("Đã tải file sao lưu");
 }
 
@@ -442,7 +442,7 @@ export function DataScreen() {
           <div className="well">
             Tên file:
             <br />
-            {EXPORT_FILE_NAME}
+            {exportFileName(new Date())}
           </div>
           <button className="btn btn-good btn-lg btn-block" onClick={exportBackup}>
             ⬇ Tải file sao lưu

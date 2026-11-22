@@ -661,7 +661,8 @@ Ghi lại các tương tác có ảnh hưởng đến sản phẩm, kiểm tra �
   nè có cách nào fix hong”.
 - Nguyên nhân: số lớn dùng font tiêu đề Handjet, số 0 có chấm giữa. Sửa: lớp `.num` (font thân bài Galmuri9, làm đậm
   bằng bóng cùng màu) cho GPA, ô đếm ngược lịch thi và ba ô số ở trang Học phần. Prompt tiếp: “đổi font chỗ hạng luôn
-  được không” → chữ xếp loại cũng dùng `.num` (giữ in hoa); tiêu đề vẫn giữ Handjet.
+  được không” → chữ xếp loại cũng dùng `.num` (giữ in hoa); tiêu đề vẫn giữ Handjet. Prompt tiếp: “Chỗ này cùng để in hoa chữ
+  CHƯA CÓ đi” → ô GPA cũng in hoa.
 - File sửa: `src/styles/app.css`, `src/features/dashboard/DashboardScreen.tsx`,
   `src/features/curriculum/CoursesScreen.tsx`, tài liệu.
 - Kiểm tra: `npm run check` 72/72, `npm run build` đạt; xem trên bản build với hai bộ mẫu.
@@ -763,3 +764,15 @@ Trước khi nộp: bổ sung prompt tiêu biểu cho phân tích, thiết kế 
 - Tạo `deliverables/StudioUS-final/` (`StudioUS.html`, `HUONG-DAN.txt` không còn mục GÓP Ý và chữ “bản dùng thử”) và `deliverables/StudioUS-final.zip`; không sửa mã ứng dụng.
 - Kiểm tra: `npm run check` 72/72, `npm run build` đạt; giải nén zip, so hash với `dist/index.html`, mở qua `file://` bằng Edge headless hiển thị đủ.
 - Commit thường các thay đổi UIBUILD-21/22/23 và push lên `main`.
+
+## UIBUILD-24 — Tên file sao lưu theo ngày (22/11/2026, root)
+
+- Yêu cầu người dùng: đổi tên file sao lưu từ `student_k2026.json` (F-06 trong báo cáo) về `student_k26_YYYY-MM-DD.json` theo ngày xuất file.
+- File sửa: `src/lib/storage/storage.ts` (`exportFileName(date)` thay hằng `EXPORT_FILE_NAME`), `src/features/data-management/DataScreen.tsx`, `tests/unit/storage.test.ts`, `tests/unit/sample.test.ts`, README, `docs/architecture.md`, kế hoạch kiểm thử.
+- Kiểm tra: `npm run check` 72/72, `npm run build` đạt; màn Dữ liệu trên bản build hiện `student_k26_2026-11-22.json`.
+
+## PKG-03 và GIT-06 — Đóng gói lại bản final và commit (22/11/2026, root)
+
+- Prompt: “Commit lại mã nguồn và đóng gói lại file zip với file html mới sửa nhé để vào source-report và xóa file zip cũ để file zip mới thành StudioUS-final.zip nhé”.
+- Build lại từ mã có UIBUILD-23 (GPA in hoa “CHƯA CÓ”) và UIBUILD-24; cập nhật `deliverables/StudioUS-final/StudioUS.html`, xóa `deliverables/source-report/StudioUS-final.zip` cũ và nén lại cùng tên; `HUONG-DAN.txt` giữ nguyên.
+- Commit thường và push lên `main`.

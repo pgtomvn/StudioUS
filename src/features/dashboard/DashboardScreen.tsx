@@ -152,7 +152,7 @@ export function DashboardScreen() {
               <div className="stat-label">
                 <Icon name="star" size={1} /> Hạng
               </div>
-              <div className="stat-value num stat-rank">{rankOf(stats.gpa)}</div>
+              <div className="stat-value num">{rankOf(stats.gpa)}</div>
             </div>
             <div className="stat">
               <div className="stat-label">

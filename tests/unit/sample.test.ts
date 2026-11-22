@@ -27,7 +27,7 @@ const data = createSampleData(NOW);
 
 describe("bộ dữ liệu mẫu đủ để thử các chức năng", () => {
   it("là dữ liệu hợp lệ, khôi phục được từ file sao lưu", () => {
-    const result = validateImport("student_k2026.json", JSON.stringify(data));
+    const result = validateImport("student_k26_2026-11-22.json", JSON.stringify(data));
     expect(result.ok).toBe(true);
   });
 
@@ -122,7 +122,7 @@ describe("bộ dữ liệu mẫu đã hoàn thành chương trình", () => {
   const stats = computeStats(done);
 
   it("hợp lệ, mọi học phần đã chọn đều đạt, không còn nhiệm vụ", () => {
-    expect(validateImport("student_k2026.json", JSON.stringify(done)).ok).toBe(true);
+    expect(validateImport("student_k26_2026-11-22.json", JSON.stringify(done)).ok).toBe(true);
     expect(Object.values(done.records).every((record) => isPass(record.score))).toBe(true);
     expect(stats.warnings).toEqual([]);
     expect(stats.aheadOfSemester).toEqual([]);

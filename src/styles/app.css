@@ -1304,8 +1304,8 @@ input[type="time"] {
   margin-top: 4px;
   letter-spacing: 0.08em;
 }
-/* Xếp loại cùng font với số GPA, giữ in hoa */
-.stat-rank {
+/* GPA và Hạng in hoa (VD “CHƯA CÓ”, “GIỎI”); số không bị ảnh hưởng */
+.stat-value {
   text-transform: uppercase;
 }
 .stat-value small {

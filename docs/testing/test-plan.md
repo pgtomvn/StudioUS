@@ -299,9 +299,19 @@ Chưa xem trên máy thật (iOS/Android) và Safari; `size-adjust` cần Safari
 
 ## Số 0 dễ nhầm với 8 (22/11/2026, UIBUILD-23)
 
-| Nội dung                        | Cách kiểm tra (bản build localhost:4173)                                                        | Kết quả thực tế                                                                                                                              |
-| ------------------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| GPA “8.05”                      | Bộ mẫu đã hoàn thành, Tổng quan                                                                 | Trước: font Handjet, số 0 có chấm giữa trông như 8. Sau: lớp `.num` dùng Galmuri9 (số 0 rỗng), làm đậm nét bằng bóng cùng màu; đọc rõ “8.05” |
-| Các số lớn khác                 | Bộ mẫu đang học: ô đếm ngược (04 00 16 51), Học phần: Đã đạt / Đang học / Còn thiếu (17 20 121) | Cùng dùng `.num` (Galmuri9); “00” không còn giống “88”                                                                                       |
-| Kiểm thử                        | `npm run check`, `npm run build`                                                                | 72/72 đạt; build đạt                                                                                                                         |
-| Chữ Hạng (bổ sung theo yêu cầu) | Bộ mẫu đã hoàn thành, Tổng quan                                                                 | “GIỎI” dùng Galmuri9 như số GPA (lớp `.num`, giữ in hoa bằng `.stat-rank`); người dùng mới hiện “CHƯA CÓ”                                    |
+| Nội dung                                | Cách kiểm tra (bản build localhost:4173)                                                        | Kết quả thực tế                                                                                                                              |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| GPA “8.05”                              | Bộ mẫu đã hoàn thành, Tổng quan                                                                 | Trước: font Handjet, số 0 có chấm giữa trông như 8. Sau: lớp `.num` dùng Galmuri9 (số 0 rỗng), làm đậm nét bằng bóng cùng màu; đọc rõ “8.05” |
+| Các số lớn khác                         | Bộ mẫu đang học: ô đếm ngược (04 00 16 51), Học phần: Đã đạt / Đang học / Còn thiếu (17 20 121) | Cùng dùng `.num` (Galmuri9); “00” không còn giống “88”                                                                                       |
+| Kiểm thử                                | `npm run check`, `npm run build`                                                                | 72/72 đạt; build đạt                                                                                                                         |
+| Chữ Hạng (bổ sung theo yêu cầu)         | Bộ mẫu đã hoàn thành, Tổng quan                                                                 | “GIỎI” dùng Galmuri9 như số GPA (lớp `.num`, giữ in hoa bằng `.stat-rank`); người dùng mới hiện “CHƯA CÓ”                                    |
+| GPA chưa có điểm (bổ sung theo yêu cầu) | Dữ liệu trống, Tổng quan                                                                        | Ô GPA và ô Hạng cùng in hoa “CHƯA CÓ” (`.stat-value` in hoa; số GPA không đổi)                                                               |
+
+## Tên file sao lưu theo ngày (22/11/2026, UIBUILD-24)
+
+| Nội dung      | Cách kiểm tra                                  | Kết quả thực tế                                    |
+| ------------- | ---------------------------------------------- | -------------------------------------------------- |
+| Tên file      | `tests/unit/storage.test.ts` (ngày 08/11/2026) | `exportFileName` trả `student_k26_2026-11-08.json` |
+| Màn Dữ liệu   | Bản build, mục Sao lưu ra file                 | Hiện `student_k26_2026-11-22.json` (ngày hiện tại) |
+| Khôi phục lại | `tests/unit/sample.test.ts` với tên file mới   | Hai bộ mẫu vẫn hợp lệ khi nhập lại                 |
+| Kiểm thử      | `npm run check`, `npm run build`               | 72/72 đạt; build đạt                               |

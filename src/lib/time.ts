@@ -95,6 +95,21 @@ export function buildWeeks(
   return slots;
 }
 
+/**
+ * Lịch học của các học kỳ chưa có ngày bắt đầu (VD học kỳ sau học kỳ hiện tại, chưa nhập được ngày):
+ * không chia được theo tuần nên thời khóa biểu hiện chúng theo thứ trong tuần.
+ */
+export function classesWithoutWeeks(
+  profile: Profile,
+  semesters: number[],
+  classes: ClassEntry[],
+): ClassEntry[] {
+  const undated = semesters.filter((semester) => !semesterMonday(profile, semester));
+  return classes
+    .filter((item) => undated.includes(item.semester))
+    .sort((a, b) => a.day - b.day || minutesOf(a.start) - minutesOf(b.start));
+}
+
 /** Vị trí tuần chứa ngày cho trước; ưu tiên học kỳ sau nếu hai học kỳ chồng ngày. */
 export function slotIndexOf(slots: WeekSlot[], date: Date): number {
   const day = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
@@ -119,6 +134,40 @@ export function daysUntil(target: Date, now = new Date()): number {
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const end = new Date(target.getFullYear(), target.getMonth(), target.getDate()).getTime();
   return Math.round((end - start) / DAY_MS);
+}
+
+/**
+ * Chia cột cho các buổi học trùng giờ trong cùng một ngày (kiểu Google Calendar): buổi chồng nhau
+ * nằm song song. Trả về cột (`lane`) của từng buổi và số cột (`lanes`) của cụm trùng chứa buổi đó.
+ */
+export function layoutOverlaps(
+  items: { id: string; start: string; end: string }[],
+): Map<string, { lane: number; lanes: number }> {
+  const sorted = [...items].sort(
+    (a, b) => minutesOf(a.start) - minutesOf(b.start) || minutesOf(b.end) - minutesOf(a.end),
+  );
+  const result = new Map<string, { lane: number; lanes: number }>();
+  let cluster: string[] = [];
+  let laneEnds: number[] = [];
+  let clusterEnd = -1;
+  const close = () => {
+    for (const id of cluster) result.get(id)!.lanes = laneEnds.length;
+    cluster = [];
+    laneEnds = [];
+  };
+  for (const item of sorted) {
+    const start = minutesOf(item.start);
+    const end = minutesOf(item.end);
+    if (start >= clusterEnd) close();
+    let lane = laneEnds.findIndex((laneEnd) => laneEnd <= start);
+    if (lane < 0) lane = laneEnds.length;
+    laneEnds[lane] = end;
+    clusterEnd = Math.max(clusterEnd, end);
+    cluster.push(item.id);
+    result.set(item.id, { lane, lanes: 1 });
+  }
+  close();
+  return result;
 }
 
 export function nextExam(exams: ExamEntry[], now = new Date()): ExamEntry | null {

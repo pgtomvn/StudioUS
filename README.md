@@ -6,7 +6,7 @@
 
 A study progress tracker for **Software Engineering students at HCMUS (University of Science, VNU-HCM), 2025 intake**. It manages the curriculum, academic results and progress toward graduation, stores data on the device with LocalStorage and works without an Internet connection.
 
-**Status:** **StudioUS – Study Progress Manager** (Vite + React + TypeScript + plain CSS, decided on 11/11/2026) for **K26** students, based on the **2025-intake Software Engineering curriculum**. Four pixel-art screens (Dashboard, Courses & Grades, Timetable & Exams, Data), a color button with 5 themes, and a mascot whose outfit changes with the theme. The course catalog is fully transcribed from the curriculum (section 7, study plan in section 8, Appendix 1); grading rules follow the UI/UX design sketch report (confirmed on 12/11/2026: pass ≥ 5.0, 8-level letter grades, GPA computed on the 10-point scale).
+**Status:** **StudioUS – Study Progress Manager** (Vite + React + TypeScript + plain CSS, decided on 11/11/2026) for **K26** students, based on the **2025-intake Software Engineering curriculum**. Four pixel-art screens (Dashboard, Courses & Grades, Timetable & Exams, Data), a color button with 5 themes, and a mascot whose outfit changes with the theme. The course catalog is fully transcribed from the curriculum (section 7, study plan in section 8, Appendix 1); grading rules follow the updated requirements analysis report (22/11/2026: A+ ≥ 9.0 … C ≥ 5.0, D+ ≥ 4.0, D ≥ 3.0, F < 3.0 with 4-point equivalents; pass ≥ 5.0; cumulative GPA on the 10-point scale over passed courses only).
 
 ## Getting started
 
@@ -65,7 +65,7 @@ src/
   components/Pet.tsx      Interactive mascot; SoundPanel.tsx: sound button and settings panel
   styles/                 themes.css (fonts + 5 palettes), app.css (layout, components, mobile)
   domain/                 rules.ts (grading scale, language requirement), progress.ts (progress, credit roll-up)
-  data/                   curriculum.ts (Software Engineering 2025 curriculum), sample.demo.ts (sample data for preview)
+  data/                   curriculum.ts (Software Engineering 2025 curriculum), sample.demo.ts (sample data covering every feature, see below)
   features/               dashboard, curriculum, schedule, data-management (academic-records still empty)
   lib/                    store.ts (state + autosave), time.ts, files.ts, mascot.ts,
                           sound.ts (effects player), music.ts (self-composed 8-bit background music)
@@ -88,6 +88,8 @@ The sources of the course catalog and grading rules are noted at the top of `src
 - **Typography:** body text uses the Galmuri9 pixel font (full Vietnamese diacritics), headings use Handjet; screens narrower than 768 px get extra line and letter spacing.
 - **Timetable & Exams (TKB & Thi):** choose Semester 1 … current semester or **All** (Semester 1 to the current one). Weeks always start at Week 1 from the semester start date. Each class is **Theory** or **Practice** (a course can have both); the session type is shown on a line under the course name on the timetable, together with time and room.
 - **Data (Dữ liệu):** profile and **semester information** (start and end dates) must be filled in from Semester 1 to the current one; back up/restore a `.json` file, reset data.
+- **Feedback round (22/11/2026):** course cards (≤ 1365 px) show labelled fields (Semester, Status, Grade, Result) and a clear result (letter · 4-point · Pass); curriculum section 3 is “Toán – Khoa học tự nhiên – Công nghệ – Môi trường” (36 credits) with parts 3.1–3.4; the out-of-semester warning has a second button that jumps to the course; Quests list and dialogs show a pixel scrollbar; the profile card shows the faction (“Môn phái: Kỹ thuật phần mềm”) and % completion; the profile form has Student ID (MSSV, 8 digits) and major; overlapping classes are laid out side by side; class colors are red, orange, yellow, green, blue, pink, purple plus a free color picker / hex code; the backup file is named `student_k2026.json` (F-06).
+- **Sample data** (“Xem thử dữ liệu mẫu” on the Dashboard or “Nạp dữ liệu mẫu” on Data; can be undone) is a made-up HK2 student that covers every feature: grades in all 8 letter bands (A+ … F, three failed courses to retake), not-started / in-progress / completed statuses, a course set to a semester ahead of the current one, courses in all four knowledge blocks, elective groups that are complete, short and picker-based, graduation option 3, PE 1 passed and PE 2 in progress, national defense passed, a TOEIC score missing the Speaking–Writing minimum, theory + practice classes of one course, two overlapping classes, a custom dark class color, a PE class, an HK3 class and exam, and exams that are upcoming (reminder banner), far away and past. `tests/unit/sample.test.ts` checks this coverage.
 - **Undo instead of confirmation:** clearing a grade, removing a course's semester, unticking an elective, changing the graduation option, deleting a class or an exam happen immediately and show a notification with an **Undo** (Hoàn tác) button for 10 seconds (a bar counts down). Undo only restores what was just removed and keeps other edits made in the meantime. Resetting all data still asks you to type RESET, then also offers Undo; loading the sample data and restoring from a file can be undone the same way.
 
 ## Mascot

@@ -46,6 +46,7 @@ const COMPOUNDS = [
   "kỹ năng",
   "kỹ thuật",
   "lập trình",
+  "linh vật",
   "lịch sử",
   "mã hóa",
   "máy tính",

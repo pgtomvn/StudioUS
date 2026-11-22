@@ -1144,6 +1144,50 @@ const icons = {
       2,
     );
   },
+  student(c) {
+    // thẻ sinh viên: dải xanh trên cùng, ảnh chân dung bên trái, các dòng chữ bên phải
+    c.ascii(
+      [
+        ".bbbbbbbbbbbbbb.",
+        ".bbbbbbbbbbbbbb.",
+        ".pppppppppppppp.",
+        ".pssssppSSSSSSp.",
+        ".psqqsppppppppp.",
+        ".psqqsppSSSSSpp.",
+        ".pBBBBppppppppp.",
+        ".pBBBBppSSSSppp.",
+        ".pppppppppppppp.",
+      ],
+      P,
+      0,
+      3,
+    );
+  },
+  faction(c) {
+    // cờ môn phái treo trên xà ngang, đuôi xẻ chữ V; ký hiệu ">_" (dấu nhắc lệnh) cho ngành phần mềm
+    c.ascii(
+      [
+        "..gNNNNNNNNNNg..",
+        "...rrrrrrrrrR...",
+        "...rrrrrrrrrR...",
+        "...rrrrrrrrrR...",
+        "...rrgrrrrrrR...",
+        "...rrrgrrrrrR...",
+        "...rrrrgrrrrR...",
+        "...rrrgrrrrrR...",
+        "...rrgrrgggrR...",
+        "...rrrrrrrrrR...",
+        "...rrrrrrrrrR...",
+        "...rrrrrrrrrR...",
+        "...rrrr..rrrR...",
+        "...rrr....rrR...",
+        "...rr......rR...",
+      ],
+      P,
+      0,
+      0,
+    );
+  },
   shield(c) {
     c.ascii(
       [

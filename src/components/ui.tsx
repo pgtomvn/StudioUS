@@ -30,6 +30,8 @@ export type IconName =
   | "scroll"
   | "floppy"
   | "shield"
+  | "faction"
+  | "student"
   | "note"
   | "speaker"
   | "mute";

@@ -53,6 +53,8 @@ export interface SemesterInfo {
 
 export interface Profile {
   name: string;
+  /** Mã số sinh viên (8 chữ số), không bắt buộc; "" = chưa nhập (Bảng 3 báo cáo phân tích yêu cầu). */
+  studentId: string;
   cohort: string;
   currentSemester: number;
   /** Thông tin từng học kỳ, khóa là số học kỳ ("1", "2", …). */

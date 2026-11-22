@@ -13,6 +13,26 @@
   width: 0;
   height: 0;
 }
+/* Riêng các ô cuộn bên trong (danh sách Nhiệm vụ, cửa sổ) có thanh cuộn pixel để biết còn nội dung. */
+.quest-scroll,
+.modal-body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) color-mix(in srgb, var(--ink) 15%, transparent);
+}
+.quest-scroll::-webkit-scrollbar,
+.modal-body::-webkit-scrollbar {
+  display: block;
+  width: 12px;
+}
+.quest-scroll::-webkit-scrollbar-track,
+.modal-body::-webkit-scrollbar-track {
+  background: color-mix(in srgb, var(--ink) 15%, transparent);
+}
+.quest-scroll::-webkit-scrollbar-thumb,
+.modal-body::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border: 2px solid var(--line);
+}
 html {
   --font-body: "Galmuri9", "VT323", "Courier New", monospace;
   font-size: 20px;
@@ -1190,6 +1210,18 @@ button.topbar-brand {
 .level > span {
   white-space: nowrap;
 }
+.faction {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-top: 8px;
+  font-size: 1.05rem;
+}
+.faction b {
+  font-weight: 400;
+  color: var(--title);
+}
 .avatar-frame {
   position: relative;
   flex: none;
@@ -1647,9 +1679,31 @@ button.topbar-brand {
 .group {
   padding: 12px 4px 6px;
 }
-.group + .group {
+.group + .group,
+.group + .section-group,
+.section-group + .group {
   margin-top: 8px;
   border-top: 4px dotted color-mix(in srgb, var(--ink) 25%, transparent);
+}
+/* Mục nhiều phần (VD 3 – Toán – KHTN – CN – MT): các phần con 3.1, 3.2… thụt vào, có vạch bên trái. */
+.section-group {
+  padding: 12px 4px 6px;
+}
+.section-parts {
+  margin-left: 8px;
+  padding-left: 12px;
+  border-left: 4px solid color-mix(in srgb, var(--ink) 20%, transparent);
+}
+.group.is-sub {
+  padding-top: 8px;
+}
+.group.is-sub .group-title {
+  font-size: 1.1rem;
+}
+.group.is-sub .group-sec {
+  background: transparent;
+  color: var(--ink);
+  box-shadow: 0 0 0 2px var(--side);
 }
 .group-head {
   display: flex;
@@ -1746,6 +1800,22 @@ button.topbar-brand {
 .c-score {
   position: relative;
 }
+/* Nhãn ô (Học kỳ, Trạng thái, Điểm, Kết quả) chỉ hiện ở dạng thẻ; bảng rộng đã có hàng tiêu đề. */
+.c-field {
+  display: block;
+  min-width: 0;
+}
+.course-row .c-cap,
+.course-row .c-grade,
+.course-row .c-none {
+  display: none;
+}
+.c-result-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
 .c-score .field-error {
   position: absolute;
   left: 0;
@@ -1834,6 +1904,9 @@ button.topbar-brand {
 }
 .pe-note {
   padding: 8px 4px 0;
+}
+.pe-info .badge {
+  white-space: normal;
 }
 .pe-info {
   display: flex;
@@ -1932,6 +2005,12 @@ button.topbar-brand {
   opacity: 0.4;
   cursor: not-allowed;
 }
+.undated-note {
+  max-width: 100%;
+  padding: 4px 10px;
+  line-height: 1.35;
+  white-space: normal;
+}
 .sem-pick {
   display: flex;
   align-items: center;
@@ -1986,6 +2065,13 @@ button.topbar-brand {
 .sem-name {
   display: flex;
   flex-direction: column;
+}
+/* Ghi chú “tuần 1 từ thứ 2 …” xuống dòng; nhãn tình trạng dài được xuống dòng trong ô. */
+.sem-weeks small {
+  display: block;
+}
+.sem-row .badge {
+  white-space: normal;
 }
 .sem-name b {
   font-weight: 400;
@@ -2138,6 +2224,37 @@ button.topbar-brand {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
 }
+/* Ô chọn màu tự do: bảng màu của máy nằm ẩn trong ô; chưa chọn thì hiện dải cầu vồng và dấu “+”. */
+.color-custom {
+  position: relative;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-weight: 700;
+  color: #241a33;
+  background: conic-gradient(#ff9b9b, #ffe66b, #8fe6a8, #8fd0ff, #c9b0ff, #ff9b9b);
+}
+.color-custom input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.color-custom:focus-within {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+.color-row .color-hex {
+  width: 120px;
+  min-height: 30px;
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: 0.95rem;
+}
 .quick-row {
   display: flex;
   gap: 4px;
@@ -2151,16 +2268,8 @@ button.topbar-brand {
   gap: 14px 22px;
   align-items: center;
 }
-.slot > :first-child {
-  flex: 1 1 320px;
-  min-width: 0;
-}
-.slot > :first-child > div {
-  min-width: 0;
-}
-.slot .badge {
-  /* nhãn nhiều dòng: cách tiêu đề và giãn dòng cho dễ đọc */
-  margin-top: 10px;
+/* Nhãn “Lưu trên thiết bị này…” nằm ngang cùng tiêu đề; màn hẹp thì xuống dòng gọn trong khung. */
+.storage-panel .panel-head .badge {
   padding: 4px 10px;
   line-height: 1.35;
   white-space: normal;
@@ -2182,9 +2291,18 @@ button.topbar-brand {
 }
 .profile-form {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1.2fr auto;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   gap: 14px;
   align-items: start;
+}
+.readonly-value {
+  display: flex;
+  align-items: center;
+  height: auto;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  line-height: 1.25;
+  opacity: 0.85;
 }
 .avatar-pick {
   display: flex;
@@ -2278,44 +2396,70 @@ button.topbar-brand {
   .course-head {
     display: none;
   }
+  /* Thẻ: [tick] mã ……… TC · loại / tên môn / Học kỳ | Trạng thái | Điểm | Kết quả (có nhãn) */
   .course-row {
     grid-template-columns: repeat(12, minmax(0, 1fr));
-    gap: 8px 8px;
-    padding: 8px 10px 10px;
+    gap: 6px 10px;
+    padding: 10px 12px 12px;
     margin-top: 10px;
   }
   .course-row .c-tick {
-    grid-column: 1 / span 2;
+    grid-column: 1;
     grid-row: 1;
     justify-self: start;
   }
   .course-row .c-code {
-    grid-column: 3 / -1;
+    grid-column: 2 / span 6;
     grid-row: 1;
     color: var(--ink-dim);
+  }
+  .course-row .c-tc {
+    grid-column: 8 / span 3;
+    grid-row: 1;
+    justify-self: end;
+  }
+  .course-row .c-kind {
+    grid-column: 11 / -1;
+    grid-row: 1;
+    justify-self: end;
   }
   .course-row .c-name {
     grid-column: 1 / -1;
     font-size: 1.15rem;
   }
-  .course-row .c-tc {
-    grid-column: 1 / span 2;
-  }
-  .course-row .c-kind {
-    grid-column: 3 / span 2;
-  }
   .course-row .c-sem {
-    grid-column: 8 / -1;
+    grid-column: 1 / span 3;
   }
   .course-row .c-status {
-    grid-column: 1 / span 6;
+    grid-column: 4 / span 4;
   }
   .course-row .c-score {
-    grid-column: 7 / span 2;
+    grid-column: 8 / span 2;
   }
   .course-row .c-result {
-    grid-column: 9 / -1;
-    justify-self: end;
+    grid-column: 10 / -1;
+  }
+  .course-row .c-cap {
+    display: block;
+    margin-bottom: 3px;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .course-row .c-result-body {
+    min-height: 32px;
+  }
+  .course-row .c-grade {
+    display: inline;
+    font-family: "Handjet", "VT323", monospace;
+    font-weight: 800;
+    font-size: 1.35rem;
+    line-height: 1;
+  }
+  .course-row .c-none {
+    display: inline;
+    color: var(--ink-dim);
   }
   .course-row .c-letter,
   .course-row .c-p4 {
@@ -2330,11 +2474,14 @@ button.topbar-brand {
   }
   .course-row .c-label {
     display: inline;
+    font-size: 0.9rem;
+  }
+  .course-row .c-tc .c-label {
     color: var(--ink-dim);
   }
   .course-row .c-score .input {
-    padding-left: 4px;
-    padding-right: 2px;
+    padding-left: 6px;
+    padding-right: 4px;
   }
   .c-center {
     text-align: left;
@@ -2508,6 +2655,21 @@ button.topbar-brand {
     grid-template-areas: "subject kind" "message kind";
     padding: 8px 10px;
     gap: 2px 10px;
+  }
+  /* thẻ môn trên điện thoại: ô tick rộng hơn, bốn ô thành 2 × 2 (Trạng thái, Kết quả rộng hơn) */
+  .course-row .c-tick {
+    grid-column: 1 / span 2;
+  }
+  .course-row .c-code {
+    grid-column: 3 / span 5;
+  }
+  .course-row .c-sem,
+  .course-row .c-score {
+    grid-column: 1 / span 5;
+  }
+  .course-row .c-status,
+  .course-row .c-result {
+    grid-column: 6 / -1;
   }
   .quest-row .q-subject {
     grid-area: subject;

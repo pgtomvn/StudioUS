@@ -21,6 +21,7 @@ describe("giữ từ ghép trên một dòng", () => {
     expect(keepWords("Toán an ninhx")).toBe("Toán an ninhx");
     expect(keepWords("Triết học Mác – Lênin")).toBe(`Triết${NB}học Mác${NB}–${NB}Lênin`);
     expect(keepWords("Thứ 2, 23/11 · 08:20")).toBe(`Thứ${NB}2, 23/11 · 08:20`);
+    expect(keepWords("Dùng linh vật")).toBe(`Dùng linh${NB}vật`);
   });
   it("chỉ thay dấu cách, giữ nguyên chữ của mọi tên học phần", () => {
     for (const course of COURSE_BY_ID.values())

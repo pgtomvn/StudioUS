@@ -1,46 +1,48 @@
 /**
  * QUY TẮC HỌC VỤ
  *
- * Nguồn chính: Báo cáo phác thảo UI/UX Nhóm 6 (deliverables/ui-ux-report, mục 2.2 Màn hình 1–2),
- * người dùng chốt ngày 12/11/2026 là nguồn đúng nhất:
- *  - Học phần Đạt khi điểm hệ 10 ≥ 5.0; dưới 5.0 là "Chưa đạt", TC không cộng vào tích lũy.
- *  - GPA tính từ điểm hệ 10, trung bình theo số TC. Điểm chữ và điểm hệ 4 chỉ quy đổi để xem.
- *  - Điểm chữ A, B+, B, C+, C, D+, D, F ↔ hệ 4: 4.0 / 3.5 / 3.0 / 2.5 / 2.0 / 1.5 / 1.0 / 0.0.
- *  - Điều kiện tốt nghiệp: GPA (hệ 10) từ 5.0 trở lên.
- * Báo cáo không ghi ngưỡng điểm của từng bậc chữ và ngưỡng xếp loại: dùng thang quy đổi thang 10
- * thường dùng (ghi ở dưới), là lựa chọn của nhóm phát triển. Mốc 138 TC và việc GDTC, GDQP-AN,
- * Ngoại ngữ không tính vào TC tích lũy/GPA khớp mục 3, 7.1.5–7.1.7 của CTĐT.
+ * Nguồn: Báo cáo phân tích yêu cầu Nhóm 6, bản cập nhật người dùng gửi ngày 22/11/2026
+ * (docs/requirements/bao-cao-phan-tich-yeu-cau-nhom6.pdf): chức năng F-02, F-03, mục 4.1–4.4.
+ * Báo cáo dẫn Quy chế đào tạo trình độ đại học 2026 của Trường; bảng quy đổi trùng với ảnh Điều 11
+ * của Quy chế trong feedback.pdf (Quy chế gốc chưa được mở trực tiếp để đối chiếu):
+ *  - Điểm học phần hệ 10 → hệ 4 → chữ: 9.0–10 A+ 4.0; 8.0–<9.0 A 3.5; 7.0–<8.0 B+ 3.0;
+ *    6.0–<7.0 B 2.5; 5.0–<6.0 C 2.0; 4.0–<5.0 D+ 1.5; 3.0–<4.0 D 1.0; <3.0 F 0.0.
+ *  - Học phần Đạt khi điểm hệ 10 ≥ 5.0 (D+, D có điểm hệ 4 nhưng vẫn Chưa đạt).
+ *  - TC tích lũy = tổng TC học phần Đạt thuộc 138 TC; GPA tích lũy = Σ(TC × điểm hệ 10) / TC tích lũy,
+ *    tức chỉ tính các học phần đã đạt.
+ *  - Xếp loại theo GPA (Bảng 4): Xuất sắc, Giỏi, Khá, Trung bình khá, Trung bình; dưới 5.0 không đạt
+ *    (4.0–<5.0 Yếu). Dưới 4.0 báo cáo không ghi: ứng dụng hiện “Kém” (chưa xác minh).
+ *  - Tốt nghiệp: 138 TC, GPA ≥ 5.0, GDQP-AN + GDTC, chuẩn ngoại ngữ (Bảng 5).
+ * GDTC, GDQP-AN, Ngoại ngữ không cộng vào 138 TC và GPA (khớp mục 3, 7.1.5–7.1.7 của CTĐT).
  */
-export const RULES_SOURCE = "Báo cáo phác thảo UI/UX Nhóm 6 (Màn hình 1 và 2)";
+export const RULES_SOURCE = "Báo cáo phân tích yêu cầu Nhóm 6 (cập nhật 22/11/2026), mục 4";
 
 /** Tổng TC tích lũy khi tốt nghiệp (CTĐT mục 3, 6). */
 export const TOTAL_CREDITS_REQUIRED = 138;
-/** Học phần Đạt khi điểm hệ 10 ≥ 5.0 (báo cáo UI/UX). */
+/** Học phần Đạt khi điểm hệ 10 ≥ 5.0 (F-02). */
 export const PASS_SCORE = 5.0;
-/** GPA hệ 10 tối thiểu trong checklist tốt nghiệp (báo cáo UI/UX). */
+/** GPA hệ 10 tối thiểu để tốt nghiệp (mục 4.3). */
 export const GRADUATION_MIN_GPA = 5.0;
 export const MAX_SEMESTER = 8;
 
-/**
- * Quy đổi thang 10 → điểm chữ → hệ 4 (chỉ để xem). Thứ tự chữ và điểm hệ 4 theo báo cáo UI/UX;
- * ngưỡng từng bậc là thang quy đổi thường dùng vì báo cáo chưa ghi.
- */
+/** Quy đổi điểm học phần thang 10 → điểm chữ, hệ 4 (F-02, Điều 11 Quy chế). */
 const LETTER_SCALE: { min: number; letter: string; point4: number }[] = [
-  { min: 8.5, letter: "A", point4: 4.0 },
-  { min: 8.0, letter: "B+", point4: 3.5 },
-  { min: 7.0, letter: "B", point4: 3.0 },
-  { min: 6.5, letter: "C+", point4: 2.5 },
-  { min: 5.5, letter: "C", point4: 2.0 },
-  { min: 5.0, letter: "D+", point4: 1.5 },
-  { min: 4.0, letter: "D", point4: 1.0 },
+  { min: 9.0, letter: "A+", point4: 4.0 },
+  { min: 8.0, letter: "A", point4: 3.5 },
+  { min: 7.0, letter: "B+", point4: 3.0 },
+  { min: 6.0, letter: "B", point4: 2.5 },
+  { min: 5.0, letter: "C", point4: 2.0 },
+  { min: 4.0, letter: "D+", point4: 1.5 },
+  { min: 3.0, letter: "D", point4: 1.0 },
   { min: 0, letter: "F", point4: 0.0 },
 ];
 
-/** Xếp loại học lực theo GPA hệ 10 (báo cáo chỉ có ví dụ "Giỏi"; ngưỡng thang 10 thường dùng). */
+/** Xếp loại theo GPA hệ 10 (Bảng 4). “Kém” dưới 4.0 không có trong báo cáo. */
 const RANK_SCALE: { min: number; rank: string }[] = [
   { min: 9.0, rank: "Xuất sắc" },
   { min: 8.0, rank: "Giỏi" },
   { min: 7.0, rank: "Khá" },
+  { min: 6.0, rank: "Trung bình khá" },
   { min: 5.0, rank: "Trung bình" },
   { min: 4.0, rank: "Yếu" },
   { min: 0, rank: "Kém" },
@@ -66,10 +68,7 @@ export function rankOf(gpa10: number | null): string {
   return (RANK_SCALE.find((item) => value >= item.min) ?? RANK_SCALE[RANK_SCALE.length - 1]).rank;
 }
 
-/**
- * Chuẩn ngoại ngữ đầu ra. Báo cáo UI/UX chỉ ghi "theo bảng chuẩn ngoại ngữ" (ví dụ IELTS tối thiểu
- * 4.5); mức tối thiểu lấy từ Bảng 5 của báo cáo phân tích yêu cầu Nhóm 6.
- */
+/** Chuẩn ngoại ngữ đầu ra: mức tối thiểu theo Bảng 5 của báo cáo phân tích yêu cầu Nhóm 6 (mục 4.4). */
 export interface LanguageCert {
   id: string;
   name: string;
@@ -116,10 +115,13 @@ export function languageResult(
   return { state: ok ? "pass" : "fail", cert };
 }
 
-/** Điểm nhập hợp lệ: số từ 0 đến 10, chấp nhận dấu "," hoặc ".". Trả null nếu không hợp lệ. */
+/**
+ * Điểm nhập hợp lệ: số từ 0 đến 10, tối đa một chữ số thập phân (điểm học phần làm tròn đến một
+ * chữ số thập phân, Điều 11 Quy chế), chấp nhận dấu "," hoặc ".". Trả null nếu không hợp lệ.
+ */
 export function parseScore(text: string): number | null {
   const cleaned = text.trim().replace(",", ".");
-  if (!/^\d{1,2}(\.\d{1,2})?$/.test(cleaned)) return null;
+  if (!/^\d{1,2}(\.\d)?$/.test(cleaned)) return null;
   const value = Number(cleaned);
   return value >= 0 && value <= 10 ? value : null;
 }

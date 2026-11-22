@@ -3,16 +3,19 @@ import { takeFocus } from "../../app/nav";
 import { Avatar, Field, Hud, Icon, Modal, Panel, toast, undoToast } from "../../components/ui";
 import { semesterInfoStatus } from "../../domain/progress";
 import { MAX_SEMESTER } from "../../domain/rules";
+import { MAJOR_NAME } from "../../data/curriculum";
 import { createSampleData } from "../../data/sample.demo";
 import { downloadText, fileToAvatar } from "../../lib/files";
 import {
   DATA_VERSION,
-  exportFileName,
+  EXPORT_FILE_NAME,
+  isStudentId,
   summarize,
   validateImport,
   type ImportResult,
 } from "../../lib/storage/storage";
 import { actions, getState, useAppState } from "../../lib/store";
+import { keepWords } from "../../lib/text";
 import {
   academicYear,
   formatDateTime,
@@ -24,7 +27,7 @@ import {
 function exportBackup() {
   actions.markExported();
   const data = getState().data;
-  downloadText(exportFileName(new Date()), JSON.stringify(data, null, 2), "application/json");
+  downloadText(EXPORT_FILE_NAME, JSON.stringify(data, null, 2), "application/json");
   toast("Đã tải file sao lưu");
 }
 
@@ -92,7 +95,7 @@ function SemesterInfo({ highlight }: { highlight: boolean }) {
             <span className="sem-weeks">
               {weeks !== null ? `${weeks} tuần` : "—"}
               {start && start.getDay() !== 1 && (
-                <small className="dim"> · tuần 1 từ thứ 2 {formatShort(mondayOf(start))}</small>
+                <small className="dim">tuần 1 từ thứ 2 {formatShort(mondayOf(start))}</small>
               )}
             </span>
             <span>
@@ -119,6 +122,9 @@ function ProfileForm({ focusSemester }: { focusSemester: boolean }) {
   const profile = data.profile;
   const [name, setName] = useState(profile.name);
   const [nameError, setNameError] = useState(false);
+  const [studentId, setStudentId] = useState(profile.studentId);
+  const [idError, setIdError] = useState(false);
+  useEffect(() => setStudentId(profile.studentId), [profile.studentId]);
   // Đồng bộ lại khi hồ sơ đổi từ nơi khác (khôi phục file, nạp dữ liệu mẫu, đặt lại).
   useEffect(() => setName(profile.name), [profile.name]);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -134,7 +140,7 @@ function ProfileForm({ focusSemester }: { focusSemester: boolean }) {
   };
 
   return (
-    <Panel title="Hồ sơ sinh viên" icon="shield">
+    <Panel title="Hồ sơ sinh viên" icon="student">
       <div className="profile-form">
         <Field label="Họ tên *" error={nameError ? "Không để trống họ tên" : null}>
           <input
@@ -148,6 +154,25 @@ function ProfileForm({ focusSemester }: { focusSemester: boolean }) {
               if (value !== "" && value !== profile.name) actions.updateProfile({ name: value });
             }}
           />
+        </Field>
+        <Field label="MSSV" error={idError ? "MSSV gồm 8 chữ số" : null}>
+          <input
+            className={`input${idError ? " is-error" : ""}`}
+            inputMode="numeric"
+            maxLength={8}
+            placeholder="VD: 26120000"
+            value={studentId}
+            onChange={(event) => setStudentId(event.target.value.trim())}
+            onBlur={() => {
+              const ok = studentId === "" || isStudentId(studentId);
+              setIdError(!ok);
+              if (ok && studentId !== profile.studentId) actions.updateProfile({ studentId });
+            }}
+          />
+        </Field>
+        <Field label="Ngành">
+          {/* ngành cố định theo CTĐT: chỉ hiển thị, chữ tự xuống dòng khi ô hẹp */}
+          <span className="input readonly-value">{keepWords(MAJOR_NAME)}</span>
         </Field>
         <Field label="Khóa">
           <select
@@ -186,7 +211,7 @@ function ProfileForm({ focusSemester }: { focusSemester: boolean }) {
                 className="btn btn-sm"
                 onClick={() => actions.updateProfile({ avatar: null })}
               >
-                Dùng linh vật
+                {keepWords("Dùng linh vật")}
               </button>
             )}
             <input
@@ -383,19 +408,19 @@ export function DataScreen() {
       <Hud />
       <h1 className="screen-title display">Dữ liệu</h1>
 
-      <Panel>
+      <Panel
+        title="Kho dữ liệu trên thiết bị"
+        icon="floppy"
+        className="storage-panel"
+        actions={
+          <span className={`badge ${storageOk ? "good" : "bad"}`}>
+            {storageOk
+              ? "Lưu trên thiết bị · Dùng được ngoại tuyến"
+              : "Không ghi được LocalStorage"}
+          </span>
+        }
+      >
         <div className="slot">
-          <div className="row" style={{ flexWrap: "nowrap" }}>
-            <Icon name="floppy" size={3} />
-            <div>
-              <h2 className="panel-title display">Kho dữ liệu trên thiết bị</h2>
-              <span className={`badge ${storageOk ? "good" : "bad"}`}>
-                {storageOk
-                  ? "Lưu trên thiết bị này · Dùng được khi ngoại tuyến"
-                  : "Không ghi được LocalStorage"}
-              </span>
-            </div>
-          </div>
           <div className="slot-item">
             <small>Lưu lần cuối</small>
             <span>{formatDateTime(data.meta.lastSavedAt) || "Chưa có"}</span>
@@ -428,7 +453,7 @@ export function DataScreen() {
           <div className="well">
             Tên file:
             <br />
-            {exportFileName(new Date())}
+            {EXPORT_FILE_NAME}
           </div>
           <button className="btn btn-good btn-lg btn-block" onClick={exportBackup}>
             ⬇ Tải file sao lưu

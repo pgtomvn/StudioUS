@@ -168,8 +168,11 @@ export function computeStats(data: AppData): Stats {
       aheadOfSemester.push(course);
     if (record.status === "done" && record.score !== null) {
       scoredCount += 1;
-      scoredCredits += course.credits;
-      sum10 += record.score * course.credits;
+      // GPA tích lũy chỉ tính các học phần đã đạt (chia cho TC tích lũy, F-03).
+      if (isPass(record.score)) {
+        scoredCredits += course.credits;
+        sum10 += record.score * course.credits;
+      }
     }
     if (record.status === "done" && isPass(record.score)) continue;
     const failed = record.status === "done" && record.score !== null;

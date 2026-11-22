@@ -567,6 +567,54 @@ Ghi lại các tương tác có ảnh hưởng đến sản phẩm, kiểm tra �
   dòng, túi đồ trang trí) rồi bỏ theo yêu cầu người dùng, xóa luôn hàm tính buổi học tới không còn dùng.
 - Kiểm tra: `npm run check` 54/54, `npm run build` đạt; thử trên bản build ghi trong kế hoạch kiểm thử.
 
+## Góp ý feedback.pdf và báo cáo phân tích yêu cầu cập nhật ngày 22/11/2026
+
+- UIBUILD-17, root (Claude Code, mô hình Claude Opus 5.5). Prompt: “Mình vừa thêm file feedback.pdf vào dự án, bạn xem
+  qua rồi cùng thảo luận chỉnh sửa lại như vậy để sản phẩm ổn hơn, bản báo cáo phân tích yêu cầu mình cũng vừa update
+  lại bạn đọc qua rồi điều chỉnh nhé”. Nhắn thêm giữa lượt: “Tạo icon khác cho chỗ môn phái nhé”, “Tạo icon mới chỗ Hồ
+  sơ sinh viên luôn nhé”.
+- AI đọc `feedback.pdf` (4 trang, 13 ý) và báo cáo (7 trang), đối chiếu CTĐT trang 9–10 cho mục 7.1.3, rồi hỏi người
+  dùng 4 điểm cần quyết định. Người dùng chọn: “Môn phái: Kỹ thuật phần mềm”; nhắc thi giữ 4 ô pixel; thêm MSSV + ngành
+  (chưa thêm “lần học”); chia cột buổi học trùng giờ.
+- AI tự quyết định: bảng quy đổi và GPA theo F-02/F-03 của báo cáo mới; xếp loại dưới 4.0 vẫn “Kém” (báo cáo không
+  ghi); điểm nhập tối đa một chữ số thập phân; tên file sao lưu `student_k2026.json` theo F-06; thêm chọn màu vào cả
+  cửa sổ sửa lịch học; màu chữ trên lịch tự đổi theo nền; icon “faction” (cờ môn phái có dấu nhắc lệnh “>_”) và
+  “student” (thẻ sinh viên) vẽ thêm trong `scripts/generate-pixel-assets.mjs`.
+- File sửa: `src/domain/rules.ts`, `src/domain/progress.ts`, `src/data/curriculum.ts`, `src/types/index.ts`,
+  `src/lib/storage/storage.ts`, `src/lib/time.ts`, `src/lib/color.ts` (mới), `src/components/ui.tsx`,
+  `src/features/*`, `src/styles/app.css`, `scripts/generate-pixel-assets.mjs`, `src/assets/pixel/icon-faction.png`,
+  `src/assets/pixel/icon-student.png`, `tests/unit/*` (thêm `schedule.test.ts`), AGENTS.md, README và tài liệu.
+- Điều chỉnh sau khi thử: “8.7% hoàn thành” gãy dòng trong cột Kinh nghiệm → chuyển % lên dòng số TC; icon cờ 20 px khó
+  nhìn → 24 px; ô chọn màu tự do lộ khung mặc định → ẩn ô chọn của trình duyệt trong ô cầu vồng; trang Học phần 375 px
+  tràn ngang (nhãn Giáo dục thể chất không xuống dòng, lỗi có từ trước) và ô tick đè mã môn → sửa.
+- Kiểm tra: `npm run check` 59/59, `npm run build` đạt; thử trên bản build ghi trong kế hoạch kiểm thử.
+
+## Bộ dữ liệu mẫu đủ chức năng ngày 22/11/2026
+
+- UIBUILD-18, root (Claude Code, mô hình Claude Opus 5.5). Prompt: “Bộ dữ liệu mẫu là đầy đủ để test các chức năng
+  nhé”. Nhắn thêm giữa lượt: “Chỗ icon này cho cùng size với các icon như hồ sơ sinh viên nè, rồi dòng lưu trên…. thì
+  ngang luôn cũng được” (ảnh khung Kho dữ liệu) và “Chỗ này để Dùng rồi xuống dòng Linh vật á” (ảnh nút “Dùng linh
+  vật” xuống 3 dòng).
+- AI liệt kê các trường hợp cần phủ theo F-01 – F-06 và các tính năng đã làm, viết lại `src/data/sample.demo.ts` (sinh
+  viên giả HK2, MSSV giả 26120000) và thêm `tests/unit/sample.test.ts` kiểm tra độ phủ; khung Kho dữ liệu dùng phần đầu
+  khung chung (icon cỡ mặc định, nhãn ở hàng tiêu đề, rút gọn chữ để vừa ở 1024 px); thêm “linh vật” vào danh sách từ
+  ghép; ô Ngành đổi sang ô chữ chỉ xem để xuống dòng trên điện thoại (phát hiện khi thử ở 375 px).
+- File sửa: `src/data/sample.demo.ts`, `tests/unit/sample.test.ts` (mới), `tests/unit/text.test.ts`, `src/lib/text.ts`,
+  `src/features/data-management/DataScreen.tsx`, `src/styles/app.css`, README và tài liệu.
+- Kiểm tra: `npm run check` 66/66, `npm run build` đạt; thử trên bản build ghi trong kế hoạch kiểm thử.
+
+## Lịch học kỳ sau không hiện ngày 22/11/2026
+
+- UIBUILD-19, root (Claude Code, mô hình Claude Opus 5.5). Prompt kèm ảnh cảnh báo HK3: “Thông báo cảnh báo có lịch học
+  vào HK3 nhưng HK3 không có lịch nào, kiểm tra lại nhé. Dữ liệu bộ kiểm mẫu á”.
+- Nguyên nhân: thời khóa biểu chỉ dựng tuần cho học kỳ đã có ngày bắt đầu; ngày của học kỳ sau học kỳ hiện tại không nhập
+  được, nên lịch HK3 không bao giờ hiện (không riêng bộ mẫu). Sửa: `classesWithoutWeeks` (`src/lib/time.ts`) lấy lịch
+  của học kỳ chưa có ngày bắt đầu để hiện theo thứ trong tuần, kèm nhãn giải thích; lời nhắc “nhập thông tin học kỳ”
+  chỉ còn khi không có lịch nào để hiện.
+- File sửa: `src/lib/time.ts`, `src/features/schedule/ScheduleScreen.tsx`, `src/styles/app.css`,
+  `tests/unit/sample.test.ts`, tài liệu.
+- Kiểm tra: `npm run check` 67/67, `npm run build` đạt; thử trên bản build ghi trong kế hoạch kiểm thử.
+
 ## Mẫu cho các bước tiếp theo
 
 - Ngày, người thực hiện, công cụ/mô hình nếu có:

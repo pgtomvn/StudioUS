@@ -69,17 +69,17 @@ describe("tổng hợp tiến độ", () => {
     expect(stats.blocks.every((block) => block.earned === 0)).toBe(true);
   });
 
-  it("đạt khi điểm ≥ 5.0; GPA tính từ điểm hệ 10, trung bình theo tín chỉ", () => {
+  it("đạt khi điểm ≥ 5.0; GPA tích lũy = Σ(TC × điểm hệ 10) / TC tích lũy (chỉ môn đạt)", () => {
     const data = createDefaultData();
-    data.records.MTH00021 = done(1, 9); // A
-    data.records.MTH00045 = done(1, 5); // D+ – vẫn đạt
-    data.records.CSC00004 = done(1, 4.9); // D – chưa đạt
+    data.records.MTH00021 = done(1, 9); // A+
+    data.records.MTH00045 = done(1, 5); // C – đạt
+    data.records.CSC00004 = done(1, 4.9); // D+ – chưa đạt, không vào GPA
     data.records.BAA00004 = done(2, 6); // 3 TC
     data.records.CSC10012 = { semester: 1, status: "doing", score: null };
     const stats = computeStats(data);
     expect(stats.earned).toBe(11);
     expect(stats.doing).toBe(4);
-    expect(stats.gpa).toBeCloseTo((9 * 4 + 5 * 4 + 4.9 * 4 + 6 * 3) / 15);
+    expect(stats.gpa).toBeCloseTo((9 * 4 + 5 * 4 + 6 * 3) / 11);
     expect(stats.warnings[0]).toMatchObject({ focus: "CSC00004", tone: "failed" });
     expect(stats.checks.find((check) => check.key === "gpa")).toMatchObject({
       label: "GPA (hệ 10) từ 5.0 trở lên.",
@@ -198,31 +198,40 @@ describe("Giáo dục thể chất (học phần điều kiện)", () => {
   });
 });
 
-describe("quy tắc điểm (báo cáo UI/UX) và chuẩn ngoại ngữ", () => {
-  it("quy đổi 8 bậc A, B+, B, C+, C, D+, D, F sang hệ 4 (chỉ để xem)", () => {
+describe("quy tắc điểm (báo cáo phân tích yêu cầu, F-02) và chuẩn ngoại ngữ", () => {
+  it("quy đổi theo bảng F-02: A+, A, B+, B, C, D+, D, F", () => {
     const table = [
-      [9.1, "A", 4],
-      [8.5, "A", 4],
-      [8.0, "B+", 3.5],
-      [7.9, "B", 3],
-      [7.0, "B", 3],
-      [6.5, "C+", 2.5],
-      [5.5, "C", 2],
-      [5.0, "D+", 1.5],
-      [4.5, "D", 1],
-      [3.9, "F", 0],
+      [10, "A+", 4],
+      [9.0, "A+", 4],
+      [8.9, "A", 3.5],
+      [8.0, "A", 3.5],
+      [7.9, "B+", 3],
+      [7.0, "B+", 3],
+      [6.9, "B", 2.5],
+      [6.0, "B", 2.5],
+      [5.9, "C", 2],
+      [5.0, "C", 2],
+      [4.9, "D+", 1.5],
+      [4.0, "D+", 1.5],
+      [3.9, "D", 1],
+      [3.1, "D", 1],
+      [3.0, "D", 1],
+      [2.9, "F", 0],
+      [0, "F", 0],
     ] as const;
     for (const [score, letter, point4] of table)
       expect(convertScore(score), String(score)).toEqual({ letter, point4 });
+    // D+, D có điểm hệ 4 nhưng vẫn chưa đạt (đạt khi ≥ 5.0)
     expect(isPass(5)).toBe(true);
-    expect(isPass(4.99)).toBe(false);
+    expect(isPass(4.9)).toBe(false);
     expect(isPass(null)).toBe(false);
   });
 
-  it("xếp loại theo GPA hệ 10", () => {
+  it("xếp loại theo GPA hệ 10 (Bảng 4)", () => {
     expect(rankOf(9.2)).toBe("Xuất sắc");
     expect(rankOf(8.0)).toBe("Giỏi");
     expect(rankOf(7.2)).toBe("Khá");
+    expect(rankOf(6.5)).toBe("Trung bình khá");
     expect(rankOf(5.0)).toBe("Trung bình");
     expect(rankOf(4.5)).toBe("Yếu");
     expect(rankOf(null)).toBe("Chưa có");
@@ -237,9 +246,11 @@ describe("quy tắc điểm (báo cáo UI/UX) và chuẩn ngoại ngữ", () => 
     expect(languageResult("TOEIC", 450, 181).state).toBe("pass");
   });
 
-  it("điểm nhập chỉ nhận 0–10, chấp nhận dấu phẩy", () => {
+  it("điểm nhập chỉ nhận 0–10, tối đa một chữ số thập phân, chấp nhận dấu phẩy", () => {
     expect(parseScore("8,5")).toBe(8.5);
     expect(parseScore("0")).toBe(0);
+    expect(parseScore("10")).toBe(10);
+    expect(parseScore("8.25")).toBeNull();
     expect(parseScore("10.5")).toBeNull();
     expect(parseScore("abc")).toBeNull();
   });

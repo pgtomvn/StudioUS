@@ -9,6 +9,8 @@ import type { BlockId, Course, CourseGroup, GradOptionId } from "../types";
  * Lớp chữ của PDF bị lỗi nhận dạng nên đã đối chiếu bằng ảnh từng trang.
  */
 export const CURRICULUM_SOURCE = "CTĐT ngành Kỹ thuật phần mềm, khóa tuyển 2025 (QĐ 2818/QĐ-KHTN)";
+/** Ngành của ứng dụng (hồ sơ, thẻ “Môn phái” ở Tổng quan). */
+export const MAJOR_NAME = "Kỹ thuật phần mềm";
 
 /**
  * Bốn khối kiến thức. Tên viết hoa chữ cái đầu câu (đồng bộ với tên nhóm như “Tự chọn ngành /
@@ -70,6 +72,18 @@ function add(kind: Course["kind"], rows: Row[], origin?: string): string[] {
 
 const g = (group: CourseGroup) => group;
 
+/**
+ * Mục CTĐT gồm nhiều nhóm (bắt buộc + các phần tự chọn) hiển thị thành một mục có phần con
+ * (3.1, 3.2…). Mục 7.1.3 theo CTĐT trang 9–10: 24 TC bắt buộc + chọn 4 TC toán + 6 TC khoa học
+ * tự nhiên + 2 TC Trái đất – Môi trường = 36 TC.
+ */
+export const SECTIONS: Record<string, { title: string; rule: string }> = {
+  "7.1.3": {
+    title: "Toán – Khoa học tự nhiên – Công nghệ – Môi trường",
+    rule: "36 TC: bắt buộc 24 TC, tự chọn 12 TC",
+  },
+};
+
 /* ---------------------------------------------------------------- 7.1 Giáo dục đại cương */
 export const GROUPS: CourseGroup[] = [
   g({
@@ -107,7 +121,7 @@ export const GROUPS: CourseGroup[] = [
     id: "ge-math",
     block: "general",
     section: "7.1.3",
-    title: "Toán – Khoa học tự nhiên",
+    title: "Học phần bắt buộc",
     mode: "required",
     credits: 24,
     rule: "Bắt buộc 24 TC",

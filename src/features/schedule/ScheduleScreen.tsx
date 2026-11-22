@@ -1,10 +1,11 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { navigate } from "../../app/nav";
 import { Field, Hud, Mascot, Modal, Panel, toast, undoToast, useNow } from "../../components/ui";
 import { COURSE_BY_ID } from "../../data/curriculum";
 import { recordOf, scheduleCourses } from "../../domain/progress";
 import { MAX_SEMESTER } from "../../domain/rules";
 import { buildIcs, downloadText } from "../../lib/files";
+import { CLASS_COLORS, inkOn, isHexColor } from "../../lib/color";
 import { actions, getState, useAppState } from "../../lib/store";
 import { keepWords } from "../../lib/text";
 import {
@@ -12,8 +13,10 @@ import {
   classesOverlap,
   daysUntil,
   examDate,
+  classesWithoutWeeks,
   findExamClash,
   formatDate,
+  layoutOverlaps,
   semestersAhead,
   minutesOf,
   nextExam,
@@ -32,7 +35,55 @@ import type { AppData, ClassEntry, ClassKind, ExamEntry, ExamKind } from "../../
 
 const START_HOUR = 7;
 const HOURS = Array.from({ length: 12 }, (_, index) => START_HOUR + index);
-const COLORS = ["#ffe66b", "#8fe6a8", "#8fd0ff", "#ffb0c8", "#ffc08a", "#c9b0ff", "#9fe8e0"];
+/** Chọn màu lịch học: 7 màu có sẵn + ô chọn màu tự do (bảng màu của máy) và ô nhập mã hex. */
+function ColorPicker({ value, onChange }: { value: string; onChange: (color: string) => void }) {
+  const [hex, setHex] = useState(value);
+  useEffect(() => setHex(value), [value]);
+  const custom = !CLASS_COLORS.some((color) => color.value === value.toLowerCase());
+  return (
+    <div className="color-row">
+      {CLASS_COLORS.map((color) => (
+        <button
+          key={color.value}
+          type="button"
+          className={`color-dot${value.toLowerCase() === color.value ? " is-on" : ""}`}
+          style={{ background: color.value }}
+          title={`Màu ${color.name}`}
+          aria-label={`Màu ${color.name}`}
+          aria-pressed={value.toLowerCase() === color.value}
+          onClick={() => onChange(color.value)}
+        />
+      ))}
+      <label
+        className={`color-dot color-custom${custom ? " is-on" : ""}`}
+        style={custom ? { background: value, color: inkOn(value) } : undefined}
+        title="Chọn màu tự do"
+      >
+        <input
+          type="color"
+          value={isHexColor(value) ? value : "#ffffff"}
+          aria-label="Chọn màu tự do"
+          onChange={(event) => onChange(event.target.value)}
+        />
+        {!custom && "+"}
+      </label>
+      <input
+        className={`input color-hex${isHexColor(hex) ? "" : " is-error"}`}
+        value={hex}
+        maxLength={7}
+        placeholder="#RRGGBB"
+        aria-label="Mã màu hex"
+        title="Nhập mã màu dạng #RRGGBB"
+        onChange={(event) => {
+          const text = event.target.value.trim();
+          setHex(text);
+          if (isHexColor(text)) onChange(text.toLowerCase());
+        }}
+        onBlur={() => setHex(value)}
+      />
+    </div>
+  );
+}
 const EXAM_KIND: Record<ExamKind, string> = { mid: "Giữa kỳ", final: "Cuối kỳ", other: "Khác" };
 const CLASS_KIND: Record<ClassKind, string> = { theory: "Lý thuyết", lab: "Thực hành" };
 
@@ -114,7 +165,7 @@ function AddForm(props: {
     semester: props.semester,
     weekFrom: Math.max(1, props.week),
     weekTo: Math.max(props.week, maxWeek),
-    color: COLORS[data.classes.length % COLORS.length],
+    color: CLASS_COLORS[data.classes.length % CLASS_COLORS.length].value,
     note: "",
   });
   const [examDraft, setExamDraft] = useState<ExamDraft>(
@@ -334,19 +385,10 @@ function AddForm(props: {
           </div>
           <div className="field">
             <span className="field-label">Màu hiển thị</span>
-            <div className="color-row">
-              {COLORS.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  className={`color-dot${classDraft.color === color ? " is-on" : ""}`}
-                  style={{ background: color }}
-                  aria-label={`Màu ${color}`}
-                  aria-pressed={classDraft.color === color}
-                  onClick={() => setClassDraft({ ...classDraft, color })}
-                />
-              ))}
-            </div>
+            <ColorPicker
+              value={classDraft.color}
+              onChange={(color) => setClassDraft({ ...classDraft, color })}
+            />
           </div>
           <Field label="Ghi chú">
             <textarea
@@ -357,9 +399,6 @@ function AddForm(props: {
               onChange={(event) => setClassDraft({ ...classDraft, note: event.target.value })}
             />
           </Field>
-          <p className="field-hint">
-            Gợi ý giờ theo tiết học sẽ bổ sung sau khi có khung tiết chính thức (demo).
-          </p>
         </>
       ) : (
         <>
@@ -638,6 +677,10 @@ function ClassEdit({
           />
         </Field>
       </div>
+      <div className="field">
+        <span className="field-label">Màu hiển thị</span>
+        <ColorPicker value={draft.color} onChange={(color) => setDraft({ ...draft, color })} />
+      </div>
       <Field label="Ghi chú">
         <textarea
           className="textarea"
@@ -773,6 +816,10 @@ export function ScheduleScreen() {
     [data.classes, slot],
   );
   const semesterClasses = data.classes.filter((item) => semesters.includes(item.semester));
+  // Học kỳ chưa có ngày bắt đầu (thường là học kỳ sau học kỳ hiện tại): hiện lịch theo thứ, không chia tuần.
+  const undated = slot ? [] : classesWithoutWeeks(data.profile, semesters, data.classes);
+  const shownClasses = slot ? weekClasses : undated;
+  const missingAhead = missingStart.filter((semester) => semester > current);
   // Lịch thuộc học kỳ vượt quá học kỳ hiện tại: không nằm trong "Tất cả" nên phải hiện riêng kèm cảnh báo.
   const ahead = semestersAhead(data);
   const chooseFilter = (value: number | "all") => {
@@ -827,9 +874,7 @@ export function ScheduleScreen() {
                 </div>
               ))}
             </div>
-            <span>
-              {shortDate(examDate(upcoming))} · {upcoming.time} · Phòng: {upcoming.room}
-            </span>
+            <span>Phòng: {upcoming.room}</span>
           </div>
           <button
             className="banner-close"
@@ -948,6 +993,18 @@ export function ScheduleScreen() {
         </div>
       )}
 
+      {!slot && undated.length > 0 && (
+        <div className="row">
+          <span className="badge warn undated-note">
+            {missingStart.map((value) => `HK${value}`).join(", ")} chưa có ngày bắt đầu nên lịch
+            hiện theo thứ trong tuần, chưa chia tuần.{" "}
+            {missingAhead.length === missingStart.length
+              ? `Ngày bắt đầu nhập được ở trang Dữ liệu khi ${missingAhead.map((value) => `HK${value}`).join(", ")} là học kỳ hiện tại.`
+              : "Nhập ngày bắt đầu ở trang Dữ liệu để xem theo tuần."}
+          </span>
+        </div>
+      )}
+
       <div className="sched-grid">
         <Panel className="tt-wrap">
           <div className="tt" role="table" aria-label="Thời khóa biểu tuần">
@@ -969,9 +1026,11 @@ export function ScheduleScreen() {
                 {index === todayIndex && nowTop >= 0 && nowTop <= 12 && (
                   <div className="tt-now" style={{ top: `calc(var(--hour) * ${nowTop})` }} />
                 )}
-                {weekClasses
-                  .filter((item) => item.day === index + 1)
-                  .map((item) => {
+                {(() => {
+                  const dayClasses = shownClasses.filter((item) => item.day === index + 1);
+                  const lanes = layoutOverlaps(dayClasses);
+                  return dayClasses.map((item) => {
+                    const place = lanes.get(item.id) ?? { lane: 0, lanes: 1 };
                     const top = Math.max(0, (minutesOf(item.start) - START_HOUR * 60) / 60);
                     const height = Math.max(
                       0.6,
@@ -984,9 +1043,13 @@ export function ScheduleScreen() {
                         style={{
                           top: `calc(var(--hour) * ${top})`,
                           height: `calc(var(--hour) * ${height})`,
+                          // buổi trùng giờ nằm song song (mỗi buổi một cột hẹp)
+                          left: `calc(${place.lane} * 100% / ${place.lanes} + 2px)`,
+                          width: `calc(100% / ${place.lanes} - 4px)`,
                           background: item.color,
+                          color: inkOn(item.color),
                         }}
-                        title={`${courseName(item.courseId)} – ${CLASS_KIND[item.kind]}`}
+                        title={`${courseName(item.courseId)} – ${CLASS_KIND[item.kind]}${place.lanes > 1 ? " (trùng giờ)" : ""}`}
                         onClick={() => setDialog({ type: "detail", item })}
                       >
                         <b>{courseName(item.courseId)}</b>
@@ -997,7 +1060,8 @@ export function ScheduleScreen() {
                         P.{item.room}
                       </button>
                     );
-                  })}
+                  });
+                })()}
               </div>
             ))}
           </div>
@@ -1026,13 +1090,13 @@ export function ScheduleScreen() {
                 setDay((value) => Math.min(7, Math.max(1, value + (delta < 0 ? 1 : -1))));
             }}
           >
-            {weekClasses
+            {shownClasses
               .filter((item) => item.day === day)
               .map((item) => (
                 <button
                   key={item.id}
                   className="day-card"
-                  style={{ background: item.color }}
+                  style={{ background: item.color, color: inkOn(item.color) }}
                   onClick={() => setDialog({ type: "detail", item })}
                 >
                   <b style={{ fontWeight: 400, fontSize: "1.15rem" }}>
@@ -1044,12 +1108,12 @@ export function ScheduleScreen() {
                   {item.start} – {item.end} · Phòng {item.room}
                 </button>
               ))}
-            {weekClasses.length > 0 && weekClasses.every((item) => item.day !== day) && (
+            {shownClasses.length > 0 && shownClasses.every((item) => item.day !== day) && (
               <p className="dim">Ngày này không có lịch học.</p>
             )}
           </div>
 
-          {!slot ? (
+          {!slot && undated.length === 0 ? (
             <div className="empty tt-empty">
               <Mascot scale={2} />
               <p>
@@ -1061,6 +1125,7 @@ export function ScheduleScreen() {
               </button>
             </div>
           ) : (
+            slot &&
             weekClasses.length === 0 && (
               <div className="empty tt-empty">
                 <Mascot scale={2} />

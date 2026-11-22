@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { navigate, takeFocus } from "../../app/nav";
 import { Bar, Hud, Icon, Mascot, Modal, Panel, undoToast } from "../../components/ui";
 import {
@@ -8,6 +8,7 @@ import {
   GRADUATION_OPTIONS,
   GROUPS,
   PE_GROUP,
+  SECTIONS,
 } from "../../data/curriculum";
 import {
   activeGroups,
@@ -98,7 +99,8 @@ function ScoreInput(props: { courseId: string; score: number | null; disabled: b
   };
 
   return (
-    <span className="c-score">
+    <span className="c-field c-score">
+      <span className="c-cap">Điểm hệ 10</span>
       <input
         className={`input${error ? " is-error" : ""}`}
         inputMode="decimal"
@@ -112,7 +114,7 @@ function ScoreInput(props: { courseId: string; score: number | null; disabled: b
         onBlur={commit}
         onKeyDown={(event) => event.key === "Enter" && event.currentTarget.blur()}
       />
-      {error && <span className="field-error">Điểm phải từ 0 đến 10</span>}
+      {error && <span className="field-error">Điểm 0–10, tối đa 1 chữ số thập phân</span>}
     </span>
   );
 }
@@ -206,35 +208,41 @@ function CourseRow(props: { course: Course; group: CourseGroup; data: AppData; f
       <span className="c-kind c-center">
         <span className="badge">{course.kind}</span>
       </span>
-      <select
-        className={`select c-sem${ahead ? " is-error" : ""}`}
-        aria-label="Học kỳ"
-        disabled={!chosen}
-        title={chosen ? "Bước 1: chọn học kỳ" : "Tick chọn học phần trước"}
-        value={record.semester ?? ""}
-        onChange={(event) => changeSemester(event.target.value)}
-      >
-        <option value="">Chọn HK</option>
-        {SEMESTERS.map((semester) => (
-          <option key={semester} value={semester}>
-            HK{semester}
-          </option>
-        ))}
-      </select>
-      <select
-        className="select c-status"
-        aria-label="Trạng thái"
-        disabled={!chosen || record.semester === null}
-        title={record.semester === null ? "Chọn học kỳ trước" : "Bước 2: chọn trạng thái"}
-        value={record.status}
-        onChange={(event) => changeStatus(event.target.value as CourseStatus)}
-      >
-        {Object.entries(STATUS_LABEL).map(([value, label]) => (
-          <option key={value} value={value}>
-            {label}
-          </option>
-        ))}
-      </select>
+      <label className="c-field c-sem">
+        <span className="c-cap">Học kỳ</span>
+        <select
+          className={`select${ahead ? " is-error" : ""}`}
+          aria-label="Học kỳ"
+          disabled={!chosen}
+          title={chosen ? "Bước 1: chọn học kỳ" : "Tick chọn học phần trước"}
+          value={record.semester ?? ""}
+          onChange={(event) => changeSemester(event.target.value)}
+        >
+          <option value="">Chọn HK</option>
+          {SEMESTERS.map((semester) => (
+            <option key={semester} value={semester}>
+              HK{semester}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="c-field c-status">
+        <span className="c-cap">Trạng thái</span>
+        <select
+          className="select"
+          aria-label="Trạng thái"
+          disabled={!chosen || record.semester === null}
+          title={record.semester === null ? "Chọn học kỳ trước" : "Bước 2: chọn trạng thái"}
+          value={record.status}
+          onChange={(event) => changeStatus(event.target.value as CourseStatus)}
+        >
+          {Object.entries(STATUS_LABEL).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
       <ScoreInput
         courseId={course.id}
         score={record.score}
@@ -242,15 +250,23 @@ function CourseRow(props: { course: Course; group: CourseGroup; data: AppData; f
       />
       <span className="c-letter c-center">{converted?.letter ?? ""}</span>
       <span className="c-p4 c-center">{converted ? converted.point4.toFixed(1) : ""}</span>
-      <span className="c-result">
-        {converted && (
-          <span className="c-label">
-            {converted.letter} · {converted.point4.toFixed(1)}
-          </span>
-        )}
-        {hasScore && (
-          <span className={`badge ${passed ? "good" : "bad"}`}>{passed ? "ĐẠT" : "CHƯA ĐẠT"}</span>
-        )}
+      <span className="c-field c-result">
+        <span className="c-cap">Kết quả</span>
+        <span className="c-result-body">
+          {converted ? (
+            <>
+              <b className="c-grade">{converted.letter}</b>
+              <span className="c-label">hệ 4: {converted.point4.toFixed(1)}</span>
+            </>
+          ) : (
+            <span className="c-none">—</span>
+          )}
+          {hasScore && (
+            <span className={`badge ${passed ? "good" : "bad"}`}>
+              {passed ? "ĐẠT" : "CHƯA ĐẠT"}
+            </span>
+          )}
+        </span>
       </span>
       {ahead && (
         <div className="c-warn" role="alert">
@@ -387,8 +403,8 @@ function ElectivePicker({ group, onClose }: { group: CourseGroup; onClose: () =>
 /* ------------------------------------------------------------------ một nhóm học phần */
 function GroupSection(props: {
   group: CourseGroup;
-  /** Số thứ tự của nhóm trong khối (1, 2, 3…). */
-  number: number;
+  /** Số thứ tự của nhóm trong khối (1, 2, 3…; phần con của một mục: 3.1, 3.2…). */
+  number: string;
   progress: GroupProgress | undefined;
   courses: Course[];
   data: AppData;
@@ -399,7 +415,10 @@ function GroupSection(props: {
   const [picking, setPicking] = useState(false);
   const short = progress && group.mode === "elective" ? progress.selectShortfall : 0;
   return (
-    <div className={`group${props.focus === group.id ? " is-focus" : ""}`} id={`group-${group.id}`}>
+    <div
+      className={`group${props.focus === group.id ? " is-focus" : ""}${props.number.includes(".") ? " is-sub" : ""}`}
+      id={`group-${group.id}`}
+    >
       <div className="group-head">
         <span className="group-sec" title={`Mục ${group.section} của CTĐT`}>
           {props.number}
@@ -444,6 +463,55 @@ function GroupSection(props: {
         </p>
       )}
       {picking && <ElectivePicker group={group} onClose={() => setPicking(false)} />}
+    </div>
+  );
+}
+
+/** Đánh số nhóm trong khối: 1, 2, 3…; các nhóm cùng một mục nhiều phần (SECTIONS) là 3.1, 3.2… */
+function numberGroups(groups: CourseGroup[]): { group: CourseGroup; number: string }[] {
+  let count = 0;
+  let sub = 0;
+  let last = "";
+  return groups.map((group) => {
+    const nested = group.section in SECTIONS;
+    if (nested && group.section === last) {
+      sub += 1;
+      return { group, number: `${count}.${sub}` };
+    }
+    count += 1;
+    sub = 1;
+    last = group.section;
+    return { group, number: nested ? `${count}.1` : String(count) };
+  });
+}
+
+/** Mục CTĐT có nhiều phần (VD 7.1.3): tiêu đề chung, tổng TC, các phần con bên trong. */
+function SectionGroup(props: {
+  section: string;
+  number: string;
+  groups: Map<string, GroupProgress>;
+  children: ReactNode;
+}) {
+  const info = SECTIONS[props.section];
+  const members = GROUPS.filter((group) => group.section === props.section);
+  const credits = members.reduce((sum, group) => sum + group.credits, 0);
+  const earned = members.reduce(
+    (sum, group) => sum + (props.groups.get(group.id)?.counted ?? 0),
+    0,
+  );
+  return (
+    <div className="section-group">
+      <div className="group-head">
+        <span className="group-sec" title={`Mục ${props.section} của CTĐT`}>
+          {props.number}
+        </span>
+        <h3 className="group-title">{keepWords(info.title)}</h3>
+        <span className="badge">{info.rule}</span>
+        <span className="badge">
+          Đạt {earned}/{credits} TC
+        </span>
+      </div>
+      <div className="section-parts">{props.children}</div>
     </div>
   );
 }
@@ -733,7 +801,9 @@ function ConditionsPanel({ data }: { data: AppData }) {
             )}
             {language.state === "pass" && <span className="badge good">ĐẠT CHUẨN</span>}
             {language.state === "fail" && (
-              <span className="badge bad">CHƯA ĐẠT (TỐI THIỂU {cert?.display})</span>
+              <span className="badge bad" title={`Tối thiểu ${cert?.display}`}>
+                CHƯA ĐẠT
+              </span>
             )}
             {language.state === "empty" && <span className="badge">CHƯA NHẬP</span>}
           </div>
@@ -816,7 +886,9 @@ export function CoursesScreen() {
   const { data } = useAppState();
   const stats = computeStats(data);
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
-  const [focus] = useState(() => takeFocus());
+  const [focus, setFocus] = useState(() => takeFocus());
+  /** Tăng mỗi lần bấm “Sửa học kỳ học phần” để cuộn lại kể cả khi vẫn là học phần cũ. */
+  const [jump, setJump] = useState(0);
   const [filterSheet, setFilterSheet] = useState(false);
   const focusBlock = useMemo(() => {
     if (!focus) return null;
@@ -841,6 +913,14 @@ export function CoursesScreen() {
     return result;
   });
   const set = (patch: Partial<Filters>) => setFilters((current) => ({ ...current, ...patch }));
+  /** Mở khối chứa học phần, bỏ lọc rồi cuộn tới học phần đó (nút “Sửa học kỳ học phần”). */
+  const jumpTo = (courseId: string) => {
+    const block = GROUPS.find((group) => group.courseIds.includes(courseId))?.block;
+    if (block) setOpen((value) => ({ ...value, [block]: true }));
+    setFilters(NO_FILTERS);
+    setFocus(courseId);
+    setJump((value) => value + 1);
+  };
   const filtering = JSON.stringify(filters) !== JSON.stringify(NO_FILTERS);
   const narrowing = filters.semester !== "" || filters.status !== "";
 
@@ -851,7 +931,7 @@ export function CoursesScreen() {
       document.getElementById(`group-${focus}`) ??
       document.getElementById(`block-${focus}`);
     target?.scrollIntoView({ block: "center" });
-  }, [focus]);
+  }, [focus, jump]);
 
   /** Học phần hiển thị của từng nhóm (nhóm chọn qua hộp tìm kiếm chỉ hiện môn đã chọn). */
   const rowsOf = (group: CourseGroup, applyFilters: boolean): Course[] => {
@@ -908,6 +988,9 @@ export function CoursesScreen() {
             (HK{current}): {stats.aheadOfSemester.map((course) => course.id).join(", ")}. Vui lòng
             cập nhật học kỳ hiện tại hoặc sửa học kỳ của học phần.
           </p>
+          <button className="btn" onClick={() => jumpTo(stats.aheadOfSemester[0].id)}>
+            Sửa học kỳ học phần
+          </button>
           <button className="btn btn-primary" onClick={() => navigate("data", "semester")}>
             Cập nhật học kỳ hiện tại
           </button>
@@ -963,12 +1046,53 @@ export function CoursesScreen() {
         BLOCKS.filter((block) => !filters.block || filters.block === block.id).map((block) => {
           const progress = stats.blocks.find((item) => item.id === block.id)!;
           const groups = shownGroups.filter((group) => group.block === block.id);
-          // Đánh số nhóm 1, 2, 3… theo thứ tự trong khối (không đổi khi đang lọc).
-          const groupRows = groups.map((group, index) => ({
+          // Đánh số nhóm theo thứ tự trong khối (không đổi khi đang lọc).
+          const groupRows = numberGroups(groups).map(({ group, number }) => ({
             group,
-            number: index + 1,
+            number,
             rows: rowsOf(group, true),
           }));
+          const visibleRows = groupRows.filter(
+            (item) => !filtering || item.rows.length > 0 || item.group.picker,
+          );
+          // Gom các nhóm liên tiếp cùng một mục nhiều phần vào một khung chung.
+          const parts: ReactNode[] = [];
+          for (let index = 0; index < visibleRows.length;) {
+            const first = visibleRows[index];
+            const renderGroup = (item: (typeof visibleRows)[number]) => (
+              <GroupSection
+                key={item.group.id}
+                group={item.group}
+                number={item.number}
+                progress={stats.groups.get(item.group.id)}
+                courses={item.rows}
+                data={data}
+                focus={focus}
+                filtering={filtering}
+              />
+            );
+            if (!(first.group.section in SECTIONS)) {
+              parts.push(renderGroup(first));
+              index += 1;
+              continue;
+            }
+            const members: typeof visibleRows = [];
+            while (
+              index < visibleRows.length &&
+              visibleRows[index].group.section === first.group.section
+            )
+              members.push(visibleRows[index++]);
+            parts.push(
+              <SectionGroup
+                key={`section-${first.group.section}`}
+                section={first.group.section}
+                number={first.number.split(".")[0]}
+                groups={stats.groups}
+              >
+                {members.map(renderGroup)}
+              </SectionGroup>,
+            );
+          }
           const anyRows = groupRows.some((item) => item.rows.length > 0);
           if (filtering && !anyRows && block.id !== "graduation") return null;
           const isOpen = filtering ? true : !!open[block.id];
@@ -998,20 +1122,7 @@ export function CoursesScreen() {
               {isOpen && (
                 <div className="block-body">
                   {block.id === "graduation" && <GraduationChooser data={data} />}
-                  {groupRows
-                    .filter((item) => !filtering || item.rows.length > 0 || item.group.picker)
-                    .map(({ group, number, rows }) => (
-                      <GroupSection
-                        key={group.id}
-                        group={group}
-                        number={number}
-                        progress={stats.groups.get(group.id)}
-                        courses={rows}
-                        data={data}
-                        focus={focus}
-                        filtering={filtering}
-                      />
-                    ))}
+                  {parts}
                 </div>
               )}
             </section>

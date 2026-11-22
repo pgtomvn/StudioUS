@@ -1,6 +1,6 @@
 import { navigate } from "../../app/nav";
 import { Bar, Icon, Mascot, Panel, undoToast, useNow } from "../../components/ui";
-import { COURSE_BY_ID } from "../../data/curriculum";
+import { COURSE_BY_ID, MAJOR_NAME } from "../../data/curriculum";
 import { createSampleData } from "../../data/sample.demo";
 import { computeStats, formatGpa, semesterInfoStatus } from "../../domain/progress";
 import { TOTAL_CREDITS_REQUIRED, rankOf } from "../../domain/rules";
@@ -75,6 +75,15 @@ export function DashboardScreen() {
               Mở TKB &amp; Thi
             </button>
           )}
+          {stats.aheadOfSemester.length > 0 && (
+            <button
+              className="btn"
+              title={`Mở ${stats.aheadOfSemester[0].id} ở trang Học phần để sửa học kỳ`}
+              onClick={() => navigate("courses", stats.aheadOfSemester[0].id)}
+            >
+              Sửa học kỳ học phần
+            </button>
+          )}
           <button className="btn btn-primary" onClick={() => navigate("data", "semester")}>
             Cập nhật thông tin học kỳ
           </button>
@@ -97,6 +106,11 @@ export function DashboardScreen() {
                 <span className="dim">
                   · Năm {year} · HK{data.profile.currentSemester}
                 </span>
+              </div>
+              <div className="faction">
+                <Icon name="faction" size={1.5} />
+                <span className="dim">Môn phái:</span>
+                <b>{MAJOR_NAME}</b>
               </div>
             </div>
             <div className="avatar-frame">
@@ -128,12 +142,17 @@ export function DashboardScreen() {
                 <Icon name="coin" size={1} /> Kinh nghiệm
               </div>
               <div className="xp-line">
-                <span>{stats.earned}</span>
+                <span>
+                  {stats.earned}{" "}
+                  <small className="dim">
+                    ({((stats.earned / TOTAL_CREDITS_REQUIRED) * 100).toFixed(1)}%)
+                  </small>
+                </span>
                 <span>{TOTAL_CREDITS_REQUIRED}</span>
               </div>
               <Bar value={stats.earned} max={TOTAL_CREDITS_REQUIRED} label="Số tín chỉ tích lũy" />
               <div className="xp-line dim" style={{ justifyContent: "flex-end" }}>
-                Còn lại: {stats.missing}
+                <span>Còn lại: {stats.missing}</span>
               </div>
             </div>
           </div>

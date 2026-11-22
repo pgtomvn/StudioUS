@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BLOCKS, GROUP_BY_ID, PE_GROUP } from "../../src/data/curriculum";
-import { createSampleData } from "../../src/data/sample.demo";
+import { createCompletedSampleData, createSampleData } from "../../src/data/sample.demo";
 import {
   activeEntries,
   computeStats,
@@ -10,7 +10,7 @@ import {
 } from "../../src/domain/progress";
 import { convertScore, isPass, languageResult } from "../../src/domain/rules";
 import { CLASS_COLORS, inkOn } from "../../src/lib/color";
-import { isStudentId, validateImport } from "../../src/lib/storage/storage";
+import { validateImport } from "../../src/lib/storage/storage";
 import {
   buildWeeks,
   classesWithoutWeeks,
@@ -29,7 +29,6 @@ describe("bộ dữ liệu mẫu đủ để thử các chức năng", () => {
   it("là dữ liệu hợp lệ, khôi phục được từ file sao lưu", () => {
     const result = validateImport("student_k2026.json", JSON.stringify(data));
     expect(result.ok).toBe(true);
-    expect(isStudentId(data.profile.studentId)).toBe(true);
   });
 
   it("điểm có đủ 8 bậc chữ, cả đạt và chưa đạt; đủ ba trạng thái", () => {
@@ -115,5 +114,52 @@ describe("bộ dữ liệu mẫu đủ để thử các chức năng", () => {
     // mọi học phần có lịch thi đều đang được chọn
     for (const item of data.exams)
       expect(recordOf(data, item.courseId).semester, item.courseId).not.toBeNull();
+  });
+});
+
+describe("bộ dữ liệu mẫu đã hoàn thành chương trình", () => {
+  const done = createCompletedSampleData(NOW);
+  const stats = computeStats(done);
+
+  it("hợp lệ, mọi học phần đã chọn đều đạt, không còn nhiệm vụ", () => {
+    expect(validateImport("student_k2026.json", JSON.stringify(done)).ok).toBe(true);
+    expect(Object.values(done.records).every((record) => isPass(record.score))).toBe(true);
+    expect(stats.warnings).toEqual([]);
+    expect(stats.aheadOfSemester).toEqual([]);
+  });
+
+  it("vượt 138 TC: số tích lũy là số thực tế, phần tính vào yêu cầu đủ 138, còn lại 0", () => {
+    expect(stats.earned).toBeGreaterThan(138);
+    expect(stats.counted).toBe(138);
+    expect(stats.missing).toBe(0);
+    for (const block of stats.blocks) expect(block.earned, block.id).toBe(block.required);
+  });
+
+  it("đủ mọi điều kiện tốt nghiệp", () => {
+    expect(peState(done).state).toBe("pass");
+    expect(stats.checks.every((check) => check.done)).toBe(true);
+    expect(stats.graduationReady).toBe(true);
+  });
+
+  it("GPA tích lũy đúng công thức Σ(TC × điểm hệ 10) / TC tích lũy", () => {
+    const passed = activeEntries(done)
+      .map(({ course }) => ({ course, record: recordOf(done, course.id) }))
+      .filter(({ record }) => record.status === "done" && isPass(record.score));
+    const credits = passed.reduce((sum, { course }) => sum + course.credits, 0);
+    const weighted = passed.reduce(
+      (sum, { course, record }) => sum + course.credits * record.score!,
+      0,
+    );
+    expect(credits).toBe(stats.earned);
+    expect(stats.gpa).toBeCloseTo(weighted / credits, 10);
+  });
+});
+
+describe("GPA của bộ mẫu đang học (tính tay)", () => {
+  it("5 môn đạt, 17 TC: (4×9.1 + 4×8.5 + 4×7.8 + 2×6.5 + 3×5.4) / 17 ≈ 7.69", () => {
+    const stats = computeStats(data);
+    expect(stats.earned).toBe(17);
+    expect(stats.gpa).toBeCloseTo((4 * 9.1 + 4 * 8.5 + 4 * 7.8 + 2 * 6.5 + 3 * 5.4) / 17, 10);
+    expect(stats.gpa!.toFixed(2)).toBe("7.69");
   });
 });

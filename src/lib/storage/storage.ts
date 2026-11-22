@@ -43,7 +43,6 @@ export function createDefaultData(): AppData {
     version: DATA_VERSION,
     profile: {
       name: "",
-      studentId: "",
       cohort: "K26",
       currentSemester: 1,
       semesters: {},
@@ -170,7 +169,6 @@ function normalize(input: unknown): AppData | null {
   const base = createDefaultData();
   const profile = { ...base.profile, ...(raw.profile as Partial<AppData["profile"]>) };
   if (!isObject(profile.semesters)) profile.semesters = {};
-  if (typeof profile.studentId !== "string") profile.studentId = "";
   const selections: AppData["selections"] = {};
   if (isObject(raw.selections))
     for (const [group, ids] of Object.entries(raw.selections))
@@ -287,9 +285,6 @@ export function summarize(data: AppData): DataSummary {
 
 /** Tên file sao lưu theo chức năng F-06 của báo cáo phân tích yêu cầu. */
 export const EXPORT_FILE_NAME = "student_k2026.json";
-
-/** Mã số sinh viên hợp lệ: 8 chữ số (rỗng = chưa nhập). */
-export const isStudentId = (text: string) => /^\d{8}$/.test(text);
 
 export type ImportResult =
   | { ok: true; data: AppData; summary: DataSummary; savedAt: string | null }

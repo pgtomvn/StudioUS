@@ -53,7 +53,7 @@ Rubric nhắc **138 tín chỉ** và các môn điều kiện GDQP, GDTC, ngoạ
 
 ## Dữ liệu cá nhân
 
-Kiểm thử bằng dữ liệu mẫu tự tạo theo đề bài (`src/data/sample.demo.ts`, từ 22/11/2026 phủ đủ các trường hợp chức năng, kiểm tra bằng `tests/unit/sample.test.ts`; MSSV mẫu 26120000 là số giả, không trùng MSSV thành viên nhóm). Không đưa bảng điểm có thông tin nhận diện, mật khẩu hoặc dữ liệu tài khoản vào Git. Không thu thập từ cổng sinh viên trong bước khởi tạo.
+Kiểm thử bằng dữ liệu mẫu tự tạo theo đề bài (`src/data/sample.demo.ts`, từ 22/11/2026 phủ đủ các trường hợp chức năng, kiểm tra bằng `tests/unit/sample.test.ts`; có thêm bộ “đã hoàn thành chương trình” từ cùng ngày; ô MSSV đã bỏ nên bộ mẫu không còn MSSV). Không đưa bảng điểm có thông tin nhận diện, mật khẩu hoặc dữ liệu tài khoản vào Git. Không thu thập từ cổng sinh viên trong bước khởi tạo.
 
 Dữ liệu người dùng nhập sau này phải lưu trên chính thiết bị bằng LocalStorage. Ứng dụng đã được chuẩn bị phải xem và cập nhật dữ liệu được khi ngắt Internet, không phụ thuộc API hay dịch vụ AI trực tuyến.
 

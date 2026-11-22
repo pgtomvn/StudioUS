@@ -208,66 +208,74 @@ function CourseRow(props: { course: Course; group: CourseGroup; data: AppData; f
       <span className="c-kind c-center">
         <span className="badge">{course.kind}</span>
       </span>
-      <label className="c-field c-sem">
-        <span className="c-cap">Học kỳ</span>
-        <select
-          className={`select${ahead ? " is-error" : ""}`}
-          aria-label="Học kỳ"
-          disabled={!chosen}
-          title={chosen ? "Bước 1: chọn học kỳ" : "Tick chọn học phần trước"}
-          value={record.semester ?? ""}
-          onChange={(event) => changeSemester(event.target.value)}
-        >
-          <option value="">Chọn HK</option>
-          {SEMESTERS.map((semester) => (
-            <option key={semester} value={semester}>
-              HK{semester}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="c-field c-status">
-        <span className="c-cap">Trạng thái</span>
-        <select
-          className="select"
-          aria-label="Trạng thái"
-          disabled={!chosen || record.semester === null}
-          title={record.semester === null ? "Chọn học kỳ trước" : "Bước 2: chọn trạng thái"}
-          value={record.status}
-          onChange={(event) => changeStatus(event.target.value as CourseStatus)}
-        >
-          {Object.entries(STATUS_LABEL).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <ScoreInput
-        courseId={course.id}
-        score={record.score}
-        disabled={!chosen || record.status !== "done"}
-      />
-      <span className="c-letter c-center">{converted?.letter ?? ""}</span>
-      <span className="c-p4 c-center">{converted ? converted.point4.toFixed(1) : ""}</span>
-      <span className="c-field c-result">
-        <span className="c-cap">Kết quả</span>
-        <span className="c-result-body">
+      {/* Các ô nhập và kết quả: bảng rộng là các cột (display: contents), dạng thẻ là một hàng tự xuống dòng */}
+      <div className="c-fields">
+        <label className="c-field c-sem">
+          <span className="c-cap">Học kỳ</span>
+          <select
+            className={`select${ahead ? " is-error" : ""}`}
+            aria-label="Học kỳ"
+            disabled={!chosen}
+            title={chosen ? "Bước 1: chọn học kỳ" : "Tick chọn học phần trước"}
+            value={record.semester ?? ""}
+            onChange={(event) => changeSemester(event.target.value)}
+          >
+            <option value="">Chọn HK</option>
+            {SEMESTERS.map((semester) => (
+              <option key={semester} value={semester}>
+                HK{semester}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="c-field c-status">
+          <span className="c-cap">Trạng thái</span>
+          <select
+            className="select"
+            aria-label="Trạng thái"
+            disabled={!chosen || record.semester === null}
+            title={record.semester === null ? "Chọn học kỳ trước" : "Bước 2: chọn trạng thái"}
+            value={record.status}
+            onChange={(event) => changeStatus(event.target.value as CourseStatus)}
+          >
+            {Object.entries(STATUS_LABEL).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <ScoreInput
+          courseId={course.id}
+          score={record.score}
+          disabled={!chosen || record.status !== "done"}
+        />
+        {/* Chữ, Hệ 4, Kết quả: ba ô riêng (bảng rộng là ba cột; dạng thẻ có nhãn ở trên) */}
+        <span className="c-field c-letter c-center">
+          <span className="c-cap">Chữ</span>
           {converted ? (
-            <>
-              <b className="c-grade">{converted.letter}</b>
-              <span className="c-label">hệ 4: {converted.point4.toFixed(1)}</span>
-            </>
+            <b className="c-grade">{converted.letter}</b>
           ) : (
             <span className="c-none">—</span>
           )}
-          {hasScore && (
-            <span className={`badge ${passed ? "good" : "bad"}`}>
-              {passed ? "ĐẠT" : "CHƯA ĐẠT"}
-            </span>
-          )}
         </span>
-      </span>
+        <span className="c-field c-p4 c-center">
+          <span className="c-cap">Hệ 4</span>
+          {converted ? converted.point4.toFixed(1) : <span className="c-none">—</span>}
+        </span>
+        <span className="c-field c-result">
+          <span className="c-cap">Kết quả</span>
+          <span className="c-result-body">
+            {hasScore ? (
+              <span className={`badge ${passed ? "good" : "bad"}`}>
+                {passed ? "ĐẠT" : "CHƯA ĐẠT"}
+              </span>
+            ) : (
+              <span className="c-none">—</span>
+            )}
+          </span>
+        </span>
+      </div>
       {ahead && (
         <div className="c-warn" role="alert">
           <Icon name="warning" size={1} />
@@ -420,9 +428,11 @@ function GroupSection(props: {
       id={`group-${group.id}`}
     >
       <div className="group-head">
-        <span className="group-sec" title={`Mục ${group.section} của CTĐT`}>
-          {props.number}
-        </span>
+        {props.number && (
+          <span className="group-sec" title={`Mục ${group.section} của CTĐT`}>
+            {props.number}
+          </span>
+        )}
         <h3 className="group-title">{keepWords(group.title)}</h3>
         <span className="badge">{group.rule}</span>
         {group.mode === "elective" && progress && (
@@ -467,12 +477,15 @@ function GroupSection(props: {
   );
 }
 
-/** Đánh số nhóm trong khối: 1, 2, 3…; các nhóm cùng một mục nhiều phần (SECTIONS) là 3.1, 3.2… */
+/**
+ * Đánh số nhóm trong khối: 1, 2, 3…; các nhóm cùng một mục nhiều phần (SECTIONS) là 3.1, 3.2…
+ * Khối chỉ có một nhóm (VD Kiến thức cơ sở ngành) thì không đánh số.
+ */
 function numberGroups(groups: CourseGroup[]): { group: CourseGroup; number: string }[] {
   let count = 0;
   let sub = 0;
   let last = "";
-  return groups.map((group) => {
+  const numbered = groups.map((group) => {
     const nested = group.section in SECTIONS;
     if (nested && group.section === last) {
       sub += 1;
@@ -483,6 +496,9 @@ function numberGroups(groups: CourseGroup[]): { group: CourseGroup; number: stri
     last = group.section;
     return { group, number: nested ? `${count}.1` : String(count) };
   });
+  return count === 1 && numbered.length === 1
+    ? numbered.map((item) => ({ ...item, number: "" }))
+    : numbered;
 }
 
 /** Mục CTĐT có nhiều phần (VD 7.1.3): tiêu đề chung, tổng TC, các phần con bên trong. */

@@ -1190,6 +1190,8 @@ button.topbar-brand {
   flex: 1;
 }
 .profile-name {
+  /* tên dài xuống dòng: giãn dòng để dấu tiếng Việt (VD “MẪU”) không chạm dòng trên */
+  line-height: 1.2;
   font-size: 2.6rem;
   color: var(--title);
   text-shadow: 3px 3px 0 var(--line);
@@ -1250,8 +1252,12 @@ button.topbar-brand {
 }
 .stat-strip {
   display: grid;
-  grid-template-columns: 1fr 1fr 1.5fr;
-  gap: 12px;
+  /* GPA, Hạng rộng theo nội dung (GPA không xuống dòng); Kinh nghiệm nhận phần còn lại */
+  grid-template-columns: auto auto minmax(120px, 1fr);
+  gap: 12px 18px;
+}
+.stat-strip .stat:first-child .stat-value {
+  white-space: nowrap;
 }
 .stat-label {
   display: flex;
@@ -1264,6 +1270,7 @@ button.topbar-brand {
 .stat-value {
   font-size: 2rem;
   margin-top: 4px;
+  letter-spacing: 0.08em;
 }
 .stat-value small {
   font-family: var(--font-body);
@@ -1790,6 +1797,16 @@ button.topbar-brand {
   flex: 1;
   min-width: 220px;
 }
+/* Cảnh báo nhiều ý: mỗi ý một dòng */
+.alert-lines {
+  flex: 1;
+  min-width: 220px;
+  display: grid;
+  gap: 6px;
+}
+.alert-lines p {
+  min-width: 0;
+}
 .course-row .input,
 .course-row .select {
   min-height: 32px;
@@ -1805,10 +1822,18 @@ button.topbar-brand {
   display: block;
   min-width: 0;
 }
+.c-fields {
+  display: contents;
+}
 .course-row .c-cap,
-.course-row .c-grade,
 .course-row .c-none {
   display: none;
+}
+.course-row .c-grade {
+  font-weight: 400;
+}
+.course-row.is-unchosen .c-fields > * {
+  opacity: 0.45;
 }
 .c-result-body {
   display: flex;
@@ -2427,20 +2452,40 @@ button.topbar-brand {
     grid-column: 1 / -1;
     font-size: 1.15rem;
   }
+  /* Hàng ô nhập: Học kỳ, Trạng thái gọn; Chữ, Hệ 4, Kết quả là ô riêng có nhãn (giống cột bảng rộng). */
+  .course-row .c-fields {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px 14px;
+  }
   .course-row .c-sem {
-    grid-column: 1 / span 3;
+    flex: 0 1 118px;
   }
   .course-row .c-status {
-    grid-column: 4 / span 4;
+    flex: 0 1 172px;
   }
   .course-row .c-score {
-    grid-column: 8 / span 2;
+    flex: 0 1 96px;
+  }
+  .course-row .c-letter,
+  .course-row .c-p4 {
+    flex: 0 0 auto;
+    min-width: 48px;
   }
   .course-row .c-result {
-    grid-column: 10 / -1;
+    flex: 0 1 auto;
+    min-width: 92px;
+  }
+  /* chữ điểm, hệ 4 thẳng hàng với các ô nhập cao 32px */
+  .course-row .c-letter,
+  .course-row .c-p4 {
+    line-height: 32px;
   }
   .course-row .c-cap {
     display: block;
+    line-height: 1.2;
     margin-bottom: 3px;
     font-size: 0.72rem;
     letter-spacing: 0.04em;
@@ -2451,25 +2496,21 @@ button.topbar-brand {
     min-height: 32px;
   }
   .course-row .c-grade {
-    display: inline;
     font-family: "Handjet", "VT323", monospace;
     font-weight: 800;
     font-size: 1.35rem;
     line-height: 1;
   }
+  .course-row .c-letter,
+  .course-row .c-p4 {
+    text-align: left;
+  }
   .course-row .c-none {
     display: inline;
     color: var(--ink-dim);
   }
-  .course-row .c-letter,
-  .course-row .c-p4 {
-    display: none;
-  }
   /* Môn tự chọn chưa tick: chỉ hiện mã, tên, TC để danh sách gọn. */
-  .course-row.is-unchosen .c-sem,
-  .course-row.is-unchosen .c-status,
-  .course-row.is-unchosen .c-score,
-  .course-row.is-unchosen .c-result {
+  .course-row.is-unchosen .c-fields {
     display: none;
   }
   .course-row .c-label {
@@ -2663,13 +2704,24 @@ button.topbar-brand {
   .course-row .c-code {
     grid-column: 3 / span 5;
   }
-  .course-row .c-sem,
-  .course-row .c-score {
-    grid-column: 1 / span 5;
+  .course-row .c-fields {
+    gap: 8px 10px;
   }
-  .course-row .c-status,
+  .course-row .c-sem {
+    flex: 1 1 100px;
+  }
+  .course-row .c-status {
+    flex: 1 1 150px;
+  }
+  .course-row .c-score {
+    flex: 0 1 80px;
+  }
+  .course-row .c-letter,
+  .course-row .c-p4 {
+    min-width: 38px;
+  }
   .course-row .c-result {
-    grid-column: 6 / -1;
+    min-width: 0;
   }
   .quest-row .q-subject {
     grid-area: subject;

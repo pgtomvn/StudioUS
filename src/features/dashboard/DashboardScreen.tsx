@@ -1,7 +1,7 @@
 import { navigate } from "../../app/nav";
 import { Bar, Icon, Mascot, Panel, undoToast, useNow } from "../../components/ui";
 import { COURSE_BY_ID, MAJOR_NAME } from "../../data/curriculum";
-import { createSampleData } from "../../data/sample.demo";
+import { SAMPLES } from "../../data/sample.demo";
 import { computeStats, formatGpa, semesterInfoStatus } from "../../domain/progress";
 import { TOTAL_CREDITS_REQUIRED, rankOf } from "../../domain/rules";
 import { actions, getState, useAppState } from "../../lib/store";
@@ -41,35 +41,52 @@ export function DashboardScreen() {
           <Mascot scale={2} />
           <p>
             Chưa có dữ liệu học tập. Hãy sang trang Học phần &amp; Điểm để đánh dấu môn đang học và
-            nhập điểm, hoặc nạp bộ dữ liệu mẫu để xem thử giao diện.
+            nhập điểm, hoặc nạp một bộ dữ liệu mẫu (đang học hoặc đã hoàn thành) để xem thử.
           </p>
           <button className="btn btn-primary" onClick={() => navigate("courses")}>
             Bắt đầu nhập
           </button>
-          <button
-            className="btn"
-            onClick={() => {
-              const before = getState().data;
-              actions.replaceData(createSampleData());
-              undoToast("Đã nạp dữ liệu mẫu (minh họa).", () => actions.restoreAll(before));
-            }}
-          >
-            Xem thử dữ liệu mẫu
-          </button>
+          {SAMPLES.map((sample) => (
+            <button
+              key={sample.id}
+              className="btn"
+              onClick={() => {
+                const before = getState().data;
+                actions.replaceData(sample.create());
+                undoToast(sample.done, () => actions.restoreAll(before));
+              }}
+            >
+              {sample.label}
+            </button>
+          ))}
         </Panel>
       )}
 
       {needsAttention && (
         <div className="panel alert-bar" role="alert">
           <Icon name="warning" />
-          <p>
-            {semesterInfo.missing.length > 0 &&
-              `Chưa nhập đủ thông tin học kỳ (${semesterInfo.filled}/${semesterInfo.total}): thiếu ${semesterInfo.missing.map((value) => `HK${value}`).join(", ")}. `}
-            {stats.aheadOfSemester.length > 0 &&
-              `Có ${stats.aheadOfSemester.length} học phần chọn học kỳ vượt quá học kỳ hiện tại (HK${data.profile.currentSemester}).`}
-            {scheduleAhead.length > 0 &&
-              ` Có lịch học/lịch thi thuộc ${scheduleAhead.map((item) => `HK${item.semester}`).join(", ")} – vượt quá học kỳ hiện tại, xem ở trang TKB & Thi.`}
-          </p>
+          {/* mỗi vấn đề một dòng */}
+          <div className="alert-lines">
+            {semesterInfo.missing.length > 0 && (
+              <p>
+                Chưa nhập đủ thông tin học kỳ ({semesterInfo.filled}/{semesterInfo.total}): thiếu{" "}
+                {semesterInfo.missing.map((value) => `HK${value}`).join(", ")}.
+              </p>
+            )}
+            {stats.aheadOfSemester.length > 0 && (
+              <p>
+                Có {stats.aheadOfSemester.length} học phần chọn học kỳ vượt quá học kỳ hiện tại (HK
+                {data.profile.currentSemester}).
+              </p>
+            )}
+            {scheduleAhead.length > 0 && (
+              <p>
+                Có lịch học/lịch thi thuộc{" "}
+                {scheduleAhead.map((item) => `HK${item.semester}`).join(", ")} – vượt quá học kỳ
+                hiện tại.
+              </p>
+            )}
+          </div>
           {scheduleAhead.length > 0 && (
             <button className="btn" onClick={() => navigate("schedule")}>
               Mở TKB &amp; Thi
@@ -141,16 +158,22 @@ export function DashboardScreen() {
               <div className="stat-label">
                 <Icon name="coin" size={1} /> Kinh nghiệm
               </div>
+              {/* Số: TC tích lũy thực tế (có thể vượt 138). Thanh, % và “Còn lại”: phần tính vào
+                  yêu cầu tốt nghiệp, đầy và đổi màu hoàn thành khi đủ 138 TC theo từng khối. */}
               <div className="xp-line">
                 <span>
                   {stats.earned}{" "}
                   <small className="dim">
-                    ({((stats.earned / TOTAL_CREDITS_REQUIRED) * 100).toFixed(1)}%)
+                    ({((stats.counted / TOTAL_CREDITS_REQUIRED) * 100).toFixed(1)}%)
                   </small>
                 </span>
                 <span>{TOTAL_CREDITS_REQUIRED}</span>
               </div>
-              <Bar value={stats.earned} max={TOTAL_CREDITS_REQUIRED} label="Số tín chỉ tích lũy" />
+              <Bar
+                value={stats.counted}
+                max={TOTAL_CREDITS_REQUIRED}
+                label="Số tín chỉ tích lũy theo yêu cầu tốt nghiệp"
+              />
               <div className="xp-line dim" style={{ justifyContent: "flex-end" }}>
                 <span>Còn lại: {stats.missing}</span>
               </div>

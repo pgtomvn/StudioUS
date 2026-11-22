@@ -4,7 +4,6 @@ import {
   DATA_KEY,
   createDefaultData,
   EXPORT_FILE_NAME,
-  isStudentId,
   loadData,
   saveData,
   validateImport,
@@ -91,9 +90,6 @@ describe("kiểm tra file nhập", () => {
 
   it("đặt tên file sao lưu theo ngày", () => {
     expect(EXPORT_FILE_NAME).toBe("student_k2026.json");
-    expect(isStudentId("26120000")).toBe(true);
-    expect(isStudentId("2612000")).toBe(false);
-    expect(isStudentId("2612000a")).toBe(false);
   });
 });
 
@@ -147,8 +143,6 @@ describe("chuyển dữ liệu từ bản dựng trước", () => {
     // Lịch học cũ chưa có loại buổi được coi là Lý thuyết.
     expect(data.classes[0].kind).toBe("theory");
     expect(data.conditions.langScore2).toBeNull();
-    // Dữ liệu cũ chưa có MSSV: để trống.
-    expect(data.profile.studentId).toBe("");
   });
 
   it("file sao lưu phiên bản 1 chỉ chứa mã hợp lệ vẫn khôi phục được", () => {

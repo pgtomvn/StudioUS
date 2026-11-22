@@ -95,7 +95,9 @@ describe("tổng hợp tiến độ", () => {
     data.selections["ge-social"] = ["BAA00005", "BAA00006"];
     const stats = computeStats(data);
     expect(stats.groups.get("ge-social")!.earned).toBe(4);
-    expect(stats.earned).toBe(2);
+    // TC tích lũy tính cả môn học dư; phần tính vào yêu cầu chỉ 2 TC của nhóm
+    expect(stats.earned).toBe(4);
+    expect(stats.counted).toBe(2);
   });
 
   it("nhắc chọn thêm TC khi tick chưa đủ nhóm tự chọn", () => {

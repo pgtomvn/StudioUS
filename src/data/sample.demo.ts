@@ -1,6 +1,7 @@
+import { COURSE_BY_ID, GROUPS } from "./curriculum";
 import { createDefaultData } from "../lib/storage/storage";
 import { mondayOf, toDateInput } from "../lib/time";
-import type { AppData, ClassEntry, ExamEntry } from "../types";
+import type { AppData, ClassEntry, CourseRecord, ExamEntry, SemesterInfo } from "../types";
 
 /**
  * Bộ dữ liệu MẪU do nhóm tự đặt để thử đủ chức năng (không phải kết quả học tập thật của ai).
@@ -43,7 +44,6 @@ export function createSampleData(now = new Date()): AppData {
     profile: {
       ...data.profile,
       name: "Sinh viên mẫu",
-      studentId: "26120000",
       currentSemester: 2,
       semesters: {
         "1": { start: day(hk1, 0), end: day(hk1, 7 * 18 - 1) },
@@ -248,3 +248,140 @@ export function createSampleData(now = new Date()): AppData {
     ],
   };
 }
+
+/**
+ * Bộ dữ liệu MẪU ĐÃ HOÀN THÀNH chương trình (HK8), do nhóm tự đặt. Dùng để thử trạng thái cuối:
+ *  - Đạt mọi học phần bắt buộc; mỗi nhóm tự chọn chọn vừa đủ TC; phương án tốt nghiệp Khóa luận.
+ *  - Học dư một học phần tự chọn tự do: TC tích lũy vượt 138 (VD 142 / 138), thanh tiến độ đầy,
+ *    đổi màu hoàn thành, còn lại 0 TC.
+ *  - Thể dục 1, 2 đạt, GDQP-AN đạt, IELTS 6.0 (đạt chuẩn) → đủ điều kiện tốt nghiệp.
+ *  - Lịch học HK8 và lịch thi đã qua (không còn lịch thi sắp tới).
+ * Điểm cố định theo mã học phần (6.0–9.6, không ngẫu nhiên) để kết quả kiểm thử ổn định.
+ */
+export function createCompletedSampleData(now = new Date()): AppData {
+  const data = createDefaultData();
+  const day = (base: Date, offset: number) => {
+    const date = new Date(base.getFullYear(), base.getMonth(), base.getDate() + offset);
+    return toDateInput(date);
+  };
+  const hk8 = mondayOf(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7 * 15));
+  const startOf = (semester: number) =>
+    new Date(hk8.getFullYear(), hk8.getMonth(), hk8.getDate() - 7 * 22 * (8 - semester));
+  const semesters: Record<string, SemesterInfo> = {};
+  for (let semester = 1; semester <= 8; semester++)
+    semesters[String(semester)] = {
+      start: day(startOf(semester), 0),
+      end: day(startOf(semester), 7 * 18 - 1),
+    };
+
+  const scoreOf = (id: string) => {
+    let hash = 0;
+    for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) % 997;
+    return Math.round((6 + (hash % 37) / 10) * 10) / 10;
+  };
+  const records: Record<string, CourseRecord> = {};
+  const selections: Record<string, string[]> = {};
+  const pass = (id: string) => {
+    const course = COURSE_BY_ID.get(id)!;
+    const semester = Math.min(8, Math.max(1, course.plan[0] ?? 7));
+    records[id] = { semester, status: "done", score: scoreOf(id) };
+  };
+  const gradOption = "thesis";
+  for (const group of GROUPS) {
+    if (group.gradOption && group.gradOption !== gradOption) continue;
+    if (group.mode === "required") {
+      group.courseIds.forEach(pass);
+      continue;
+    }
+    const picked: string[] = [];
+    let credits = 0;
+    for (const id of group.courseIds) {
+      if (credits >= group.credits) break;
+      if (records[id]) continue; // đã tính ở nhóm khác
+      picked.push(id);
+      pass(id);
+      credits += COURSE_BY_ID.get(id)!.credits;
+    }
+    selections[group.id] = picked;
+  }
+  // Học dư một học phần tự chọn tự do để TC tích lũy vượt 138.
+  const extra = GROUPS.find((group) => group.id === "major-free")!.courseIds.find(
+    (id) => !records[id],
+  )!;
+  selections["major-free"] = [...selections["major-free"], extra];
+  pass(extra);
+  // Giáo dục thể chất (không tính vào 138 TC và GPA)
+  records.BAA00021 = { semester: 1, status: "done", score: 8.0 };
+  records.BAA00022 = { semester: 2, status: "done", score: 8.5 };
+
+  const lesson = (id: string, patch: Partial<ClassEntry> & Pick<ClassEntry, "courseId">) => ({
+    id,
+    kind: "theory" as const,
+    semester: 8,
+    day: 2,
+    start: "07:30",
+    end: "09:30",
+    room: "F201",
+    weekFrom: 1,
+    weekTo: 15,
+    color: "#8fd0ff",
+    note: "",
+    ...patch,
+  });
+  return {
+    ...data,
+    profile: { ...data.profile, name: "Cử nhân mẫu", currentSemester: 8, semesters },
+    records,
+    selections,
+    gradOption,
+    conditions: {
+      ...data.conditions,
+      pe: "none",
+      defense: "pass",
+      langType: "IELTS",
+      langScore: 6.0,
+      langScore2: null,
+    },
+    classes: [
+      lesson("c1", { courseId: "BAA00003", day: 4, room: "E101", color: "#ffe66b" }),
+      lesson("c2", {
+        courseId: "CSC10251",
+        day: 2,
+        start: "13:30",
+        end: "15:30",
+        room: "Phòng Lab SE",
+        color: "#c9b0ff",
+        note: "Gặp giảng viên hướng dẫn khóa luận",
+      }),
+    ],
+    exams: [
+      {
+        id: "x1",
+        courseId: "BAA00003",
+        semester: 8,
+        kind: "final",
+        date: day(new Date(now.getFullYear(), now.getMonth(), now.getDate()), -10),
+        time: "07:30",
+        room: "E101",
+        remindDays: 7,
+        note: "",
+      },
+    ],
+  };
+}
+
+/** Hai bộ dữ liệu mẫu chọn được ở trang Tổng quan (người dùng mới) và trang Dữ liệu. */
+export const SAMPLES: { id: string; label: string; done: string; create: () => AppData }[] = [
+  {
+    id: "progress",
+    label: "Mẫu đang học (HK2)",
+    done: "Đã nạp dữ liệu mẫu đang học HK2 (minh họa).",
+    create: () => createSampleData(),
+  },
+  {
+    id: "completed",
+    label: "Mẫu đã hoàn thành (HK8)",
+    done: "Đã nạp dữ liệu mẫu đã hoàn thành chương trình (minh họa).",
+    create: () => createCompletedSampleData(),
+  },
+];

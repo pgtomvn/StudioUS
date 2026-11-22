@@ -615,6 +615,22 @@ Ghi lại các tương tác có ảnh hưởng đến sản phẩm, kiểm tra �
   `tests/unit/sample.test.ts`, tài liệu.
 - Kiểm tra: `npm run check` 67/67, `npm run build` đạt; thử trên bản build ghi trong kế hoạch kiểm thử.
 
+## Góp ý vòng tiếp và bộ mẫu đã hoàn thành ngày 22/11/2026
+
+- UIBUILD-20, root (Claude Code, mô hình Claude Opus 5.5). Prompt kèm 6 ảnh: tên “Sinh viên mẫu” xuống dòng ở màn hình
+  < 1293 px cần giãn dòng; giãn chữ ô Hạng; “Test trường hợp như trên ảnh” (vượt 138 TC: thanh đầy, số thực tế, còn lại
+  0, đổi màu hoàn thành); kiểm tra công thức GPA; bỏ “xem ở trang…” và xuống dòng ở cảnh báo; bỏ đánh số khi khối chỉ có
+  một nhóm; bỏ nhập MSSV; thẻ môn < 1365 px tách Chữ, Hệ 4, Kết quả thành ô có nhãn, thu nhỏ ô Học kỳ, Trạng thái. Nhắn
+  thêm giữa lượt: “Tạo 2 bộ dữ liệu mẫu nhé, 1 bộ như hiện tại và 1 bộ khi mà đã hoàn thành full môn học nhé”.
+- AI phát hiện TC tích lũy hiển thị (giới hạn theo khối) khác tập môn ở mẫu số GPA; tách `earned` (thực tế) và `counted`
+  (tính vào yêu cầu); GPA hiện 2 chữ số thập phân để khớp ngưỡng xếp loại; bộ mẫu đã hoàn thành sinh từ danh mục CTĐT (điểm
+  cố định theo mã học phần); hai nút chọn bộ mẫu ở Tổng quan và Dữ liệu; khối ô của thẻ môn dùng `display: contents` ở
+  bảng rộng và hàng tự xuống dòng ở dạng thẻ; cột GPA/Hạng rộng theo nội dung sau khi GPA dài hơn.
+- File sửa: `src/domain/progress.ts`, `src/data/sample.demo.ts`, `src/features/dashboard/DashboardScreen.tsx`,
+  `src/features/curriculum/CoursesScreen.tsx`, `src/features/data-management/DataScreen.tsx`, `src/types/index.ts`,
+  `src/lib/storage/storage.ts`, `src/styles/app.css`, `tests/unit/*`, README và tài liệu.
+- Kiểm tra: `npm run check` 72/72, `npm run build` đạt; thử trên bản build ghi trong kế hoạch kiểm thử.
+
 ## Mẫu cho các bước tiếp theo
 
 - Ngày, người thực hiện, công cụ/mô hình nếu có:
@@ -697,3 +713,11 @@ Trước khi nộp: bổ sung prompt tiêu biểu cho phân tích, thiết kế 
 - Đối chiếu với `src/lib/storage/storage.ts`, `src/data/curriculum.ts`, `src/data/sample.demo.ts`, các màn hình, `package.json`, `docs/data-sources.md`; chạy `npm run check` (54/54) và `npm run build` (852 kB).
 - Chụp 19 ảnh từ `dist/index.html` qua `file://` bằng Edge headless điều khiển qua DevTools Protocol (script trong scratchpad, không thêm dependency); ẩn lời thoại linh vật vì đổi theo giờ. Đã xem lại từng nhóm ảnh, chụp lại một lần để bỏ thông báo thừa và đổi định dạng ngày sang vi-VN.
 - Kết quả: `deliverables/StudioUS_anh-giao-dien_Nhom6.zip` (19 PNG + danh sách chú thích). Nhận xét báo cáo gửi người dùng trong chat; không sửa mã ứng dụng, không commit/push.
+
+## PKG-01 — Đóng gói bản dùng thử một file HTML (22/11/2026, root)
+
+- Prompt: “Giờ mình muốn gửi sản phẩm thử thì khi mà mở click đúng 1 file html hay gì đó thì giao diện đầy đủ á hoặc đóng thành exe hay sao, bạn thử đề xuất nhé”; sau đề xuất, người dùng chọn “Package the HTML file”.
+- AI đề xuất gửi một file HTML (bản build đã tự chứa mọi tài nguyên) thay cho exe (Electron nặng, trái quyết định công nghệ; exe không ký số dễ bị SmartScreen/antivirus chặn, không chạy trên macOS); GitHub Pages để làm phương án phụ, chưa bật.
+- Tạo `deliverables/StudioUS-ban-thu/` (`StudioUS.html`, `HUONG-DAN.txt`) và `deliverables/StudioUS-ban-thu.zip`; không sửa mã ứng dụng.
+- Điều chỉnh: lệnh sed thêm dòng hướng dẫn không khớp do ký tự xuống dòng → ghi lại file bằng Node (UTF-8 BOM, CRLF) rồi nén lại.
+- Kiểm tra: `npm run check` 72/72, `npm run build` đạt; giải nén zip và mở qua `file://` bằng Edge headless, giao diện hiển thị đủ. Chưa thử trên máy khác.

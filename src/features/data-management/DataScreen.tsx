@@ -4,12 +4,11 @@ import { Avatar, Field, Hud, Icon, Modal, Panel, toast, undoToast } from "../../
 import { semesterInfoStatus } from "../../domain/progress";
 import { MAX_SEMESTER } from "../../domain/rules";
 import { MAJOR_NAME } from "../../data/curriculum";
-import { createSampleData } from "../../data/sample.demo";
+import { SAMPLES } from "../../data/sample.demo";
 import { downloadText, fileToAvatar } from "../../lib/files";
 import {
   DATA_VERSION,
   EXPORT_FILE_NAME,
-  isStudentId,
   summarize,
   validateImport,
   type ImportResult,
@@ -122,9 +121,6 @@ function ProfileForm({ focusSemester }: { focusSemester: boolean }) {
   const profile = data.profile;
   const [name, setName] = useState(profile.name);
   const [nameError, setNameError] = useState(false);
-  const [studentId, setStudentId] = useState(profile.studentId);
-  const [idError, setIdError] = useState(false);
-  useEffect(() => setStudentId(profile.studentId), [profile.studentId]);
   // Đồng bộ lại khi hồ sơ đổi từ nơi khác (khôi phục file, nạp dữ liệu mẫu, đặt lại).
   useEffect(() => setName(profile.name), [profile.name]);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -152,21 +148,6 @@ function ProfileForm({ focusSemester }: { focusSemester: boolean }) {
               const value = name.trim();
               setNameError(value === "");
               if (value !== "" && value !== profile.name) actions.updateProfile({ name: value });
-            }}
-          />
-        </Field>
-        <Field label="MSSV" error={idError ? "MSSV gồm 8 chữ số" : null}>
-          <input
-            className={`input${idError ? " is-error" : ""}`}
-            inputMode="numeric"
-            maxLength={8}
-            placeholder="VD: 26120000"
-            value={studentId}
-            onChange={(event) => setStudentId(event.target.value.trim())}
-            onBlur={() => {
-              const ok = studentId === "" || isStudentId(studentId);
-              setIdError(!ok);
-              if (ok && studentId !== profile.studentId) actions.updateProfile({ studentId });
             }}
           />
         </Field>
@@ -479,19 +460,23 @@ export function DataScreen() {
       <Panel title="Dữ liệu mẫu (demo)">
         <div className="row">
           <p style={{ flex: 1, minWidth: 220 }}>
-            Nạp bộ dữ liệu minh họa do nhóm tự đặt để xem thử các màn hình. Thao tác này ghi đè dữ
-            liệu hiện tại.
+            Nạp bộ dữ liệu minh họa do nhóm tự đặt để thử các chức năng: sinh viên đang học HK2,
+            hoặc sinh viên đã hoàn thành chương trình (HK8, đủ điều kiện tốt nghiệp). Thao tác này
+            ghi đè dữ liệu hiện tại (có 10 giây để hoàn tác).
           </p>
-          <button
-            className="btn"
-            onClick={() => {
-              const before = getState().data;
-              actions.replaceData(createSampleData());
-              undoToast("Đã nạp dữ liệu mẫu (minh họa).", () => actions.restoreAll(before));
-            }}
-          >
-            Nạp dữ liệu mẫu
-          </button>
+          {SAMPLES.map((sample) => (
+            <button
+              key={sample.id}
+              className="btn"
+              onClick={() => {
+                const before = getState().data;
+                actions.replaceData(sample.create());
+                undoToast(sample.done, () => actions.restoreAll(before));
+              }}
+            >
+              {sample.label}
+            </button>
+          ))}
         </div>
       </Panel>
 

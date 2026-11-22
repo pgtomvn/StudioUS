@@ -125,8 +125,15 @@ export interface BlockProgress {
 }
 
 export interface Stats {
+  /**
+   * TC tích lũy (F-03): tổng TC các học phần đạt đã chọn thuộc 138 TC, mỗi học phần tính một lần,
+   * kể cả môn tự chọn học dư – có thể vượt 138. Cũng là mẫu số của GPA tích lũy.
+   */
   earned: number;
+  /** TC tính vào yêu cầu tốt nghiệp: mỗi nhóm/khối tối đa số TC quy định (≤ 138). */
+  counted: number;
   doing: number;
+  /** TC còn thiếu theo yêu cầu của từng khối (138 − counted). */
   missing: number;
   /** GPA hệ 10, trung bình theo TC (điểm chữ/hệ 4 không dùng để tính). */
   gpa: number | null;
@@ -156,7 +163,7 @@ export function computeStats(data: AppData): Stats {
   const groups = activeGroups(data);
   let doing = 0;
   let sum10 = 0;
-  let scoredCredits = 0;
+  let passedCredits = 0;
   let scoredCount = 0;
   const warnings: Warning[] = [];
   const aheadOfSemester: Course[] = [];
@@ -170,7 +177,7 @@ export function computeStats(data: AppData): Stats {
       scoredCount += 1;
       // GPA tích lũy chỉ tính các học phần đã đạt (chia cho TC tích lũy, F-03).
       if (isPass(record.score)) {
-        scoredCredits += course.credits;
+        passedCredits += course.credits;
         sum10 += record.score * course.credits;
       }
     }
@@ -260,8 +267,10 @@ export function computeStats(data: AppData): Stats {
       a.key.localeCompare(b.key),
   );
 
-  const earned = blocks.reduce((sum, block) => sum + block.earned, 0);
-  const gpa = scoredCredits > 0 ? sum10 / scoredCredits : null;
+  const counted = blocks.reduce((sum, block) => sum + block.earned, 0);
+  // GPA tích lũy = Σ(TC × điểm hệ 10) / TC tích lũy, cùng một tập học phần đạt (F-03, mục 4.2).
+  const earned = passedCredits;
+  const gpa = earned > 0 ? sum10 / earned : null;
   const language = languageResult(
     data.conditions.langType,
     data.conditions.langScore,
@@ -279,7 +288,7 @@ export function computeStats(data: AppData): Stats {
     {
       key: "credits",
       label: `Tích lũy đủ ${TOTAL_CREDITS_REQUIRED} tín chỉ.`,
-      done: earned >= TOTAL_CREDITS_REQUIRED,
+      done: counted >= TOTAL_CREDITS_REQUIRED,
     },
     {
       key: "gpa",
@@ -296,8 +305,9 @@ export function computeStats(data: AppData): Stats {
 
   return {
     earned,
+    counted,
     doing,
-    missing: Math.max(0, TOTAL_CREDITS_REQUIRED - earned),
+    missing: Math.max(0, TOTAL_CREDITS_REQUIRED - counted),
     gpa,
     scoredCount,
     blocks,
@@ -313,7 +323,8 @@ export function computeStats(data: AppData): Stats {
   };
 }
 
-export function formatGpa(gpa: number | null, digits = 1): string {
+/** GPA hiện 2 chữ số thập phân để khớp với ngưỡng xếp loại (VD 7.96 là Khá, không làm tròn thành 8.0). */
+export function formatGpa(gpa: number | null, digits = 2): string {
   return gpa === null ? "Chưa có" : gpa.toFixed(digits);
 }
 

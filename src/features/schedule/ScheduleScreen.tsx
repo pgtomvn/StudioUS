@@ -874,6 +874,10 @@ export function ScheduleScreen() {
                 </div>
               ))}
             </div>
+            {/* điện thoại ẩn 4 ô ngày giờ nên hiện ngày giờ dạng chữ */}
+            <span className="banner-when">
+              {shortDate(examDate(upcoming))} · {upcoming.time}
+            </span>
             <span>Phòng: {upcoming.room}</span>
           </div>
           <button

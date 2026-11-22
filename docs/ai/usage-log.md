@@ -631,6 +631,41 @@ Ghi lại các tương tác có ảnh hưởng đến sản phẩm, kiểm tra �
   `src/lib/storage/storage.ts`, `src/styles/app.css`, `tests/unit/*`, README và tài liệu.
 - Kiểm tra: `npm run check` 72/72, `npm run build` đạt; thử trên bản build ghi trong kế hoạch kiểm thử.
 
+## Sửa bản điện thoại ngày 22/11/2026
+
+- UIBUILD-21, root (Claude Code, mô hình Claude Opus 5.5). Prompt kèm 4 ảnh chụp điện thoại: ngày học kỳ lòi khỏi khung;
+  cửa sổ Đặt lại nằm thấp bị bàn phím che; ô ngày/giờ trong Thêm lịch dài hơn ô khác và có thanh cuộn ngang; nút
+  Sửa/Xóa sát ô “Còn x ngày”. “Giờ là fix ở bản mobile nhé”.
+- Nguyên nhân chung: ô ngày/giờ trên Safari iOS có bề rộng tối thiểu theo chữ; cửa sổ trên điện thoại được thiết kế
+  trượt từ đáy. Sửa: ô ngày/giờ co theo cột (`min-width: 0`, riêng iOS bỏ giao diện mặc định), lưới `minmax(0, 1fr)`,
+  ô ngày học kỳ có nhãn và mỗi ô một hàng trên điện thoại, cửa sổ sát phía trên, giãn nút Sửa/Xóa; phát hiện thêm thanh
+  nhắc thi trên điện thoại mất ngày giờ nên hiện lại dạng chữ.
+- File sửa: `src/styles/app.css`, `src/features/data-management/DataScreen.tsx`,
+  `src/features/schedule/ScheduleScreen.tsx`, tài liệu.
+- Kiểm tra: `npm run check` 72/72, `npm run build` đạt; thử bằng Chrome giả lập 375 px; chưa thử trên iPhone thật.
+
+## Thẻ hồ sơ và thẻ môn bớt chen chúc ngày 22/11/2026
+
+- UIBUILD-22, root (Claude Code, mô hình Claude Opus 5.5). Prompt kèm 2 ảnh: “Chỗ thông tin này bị chen chúc quá trong
+  khi phía trên thì trống. Để GPA và Hạng chung 1 hàng, cái Kinh nghiệm 1 hàng. Màn hình <1365 px Giãn dòng, giãn khoảng
+  cách giữa các phần (HK, Trạng thái…) xíu cho nó đỡ chen chúc. Cái Kết quả cho to ra miếng để nổi bật hơn. Còn cái 3 TC
+  thì để gần lại cho đỡ lạc lõng nhé”.
+- Sửa CSS: lưới chỉ số 2 cột với Kinh nghiệm cả hàng; thẻ môn giãn dòng và khoảng cách, nhãn Kết quả to hơn, số TC đặt
+  ngay sau mã. Phát hiện và sửa thêm: ô chứng chỉ TOEIC làm trang Học phần tràn ngang ở 1200 px.
+- File sửa: `src/styles/app.css`, tài liệu.
+- Kiểm tra: `npm run check` 72/72, `npm run build` đạt; thử bản build ở 1200 px và 375 px.
+
+## Số 0 dễ nhầm với 8 ngày 22/11/2026
+
+- UIBUILD-23, root (Claude Code, mô hình Claude Opus 5.5). Prompt kèm ảnh thẻ hồ sơ: “Chỗ GPA đang dễ nhầm lẫn số 0 với 8
+  nè có cách nào fix hong”.
+- Nguyên nhân: số lớn dùng font tiêu đề Handjet, số 0 có chấm giữa. Sửa: lớp `.num` (font thân bài Galmuri9, làm đậm
+  bằng bóng cùng màu) cho GPA, ô đếm ngược lịch thi và ba ô số ở trang Học phần. Prompt tiếp: “đổi font chỗ hạng luôn
+  được không” → chữ xếp loại cũng dùng `.num` (giữ in hoa); tiêu đề vẫn giữ Handjet.
+- File sửa: `src/styles/app.css`, `src/features/dashboard/DashboardScreen.tsx`,
+  `src/features/curriculum/CoursesScreen.tsx`, tài liệu.
+- Kiểm tra: `npm run check` 72/72, `npm run build` đạt; xem trên bản build với hai bộ mẫu.
+
 ## Mẫu cho các bước tiếp theo
 
 - Ngày, người thực hiện, công cụ/mô hình nếu có:
@@ -721,3 +756,10 @@ Trước khi nộp: bổ sung prompt tiêu biểu cho phân tích, thiết kế 
 - Tạo `deliverables/StudioUS-ban-thu/` (`StudioUS.html`, `HUONG-DAN.txt`) và `deliverables/StudioUS-ban-thu.zip`; không sửa mã ứng dụng.
 - Điều chỉnh: lệnh sed thêm dòng hướng dẫn không khớp do ký tự xuống dòng → ghi lại file bằng Node (UTF-8 BOM, CRLF) rồi nén lại.
 - Kiểm tra: `npm run check` 72/72, `npm run build` đạt; giải nén zip và mở qua `file://` bằng Edge headless, giao diện hiển thị đủ. Chưa thử trên máy khác.
+
+## PKG-02 và GIT-05 — Bản final và commit (22/11/2026, root)
+
+- Prompt: “Commit mới lên Github và đóng zip file html final nhé. File hướng dẫn bỏ dòng góp ý”.
+- Tạo `deliverables/StudioUS-final/` (`StudioUS.html`, `HUONG-DAN.txt` không còn mục GÓP Ý và chữ “bản dùng thử”) và `deliverables/StudioUS-final.zip`; không sửa mã ứng dụng.
+- Kiểm tra: `npm run check` 72/72, `npm run build` đạt; giải nén zip, so hash với `dist/index.html`, mở qua `file://` bằng Edge headless hiển thị đủ.
+- Commit thường các thay đổi UIBUILD-21/22/23 và push lên `main`.

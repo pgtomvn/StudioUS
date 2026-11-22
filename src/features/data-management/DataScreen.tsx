@@ -76,21 +76,29 @@ function SemesterInfo({ highlight }: { highlight: boolean }) {
               <b>HK{semester}</b>
               <small className="dim">Năm học {academicYear(semester)}</small>
             </span>
-            <input
-              className={`input${!info.start ? " is-error" : ""}`}
-              type="date"
-              aria-label={`Ngày bắt đầu HK${semester}`}
-              value={info.start}
-              onChange={(event) => actions.setSemesterInfo(semester, { start: event.target.value })}
-            />
-            <input
-              className={`input${!info.end || (start && end && end <= start) ? " is-error" : ""}`}
-              type="date"
-              aria-label={`Ngày kết thúc HK${semester}`}
-              min={info.start || undefined}
-              value={info.end}
-              onChange={(event) => actions.setSemesterInfo(semester, { end: event.target.value })}
-            />
+            <label className="sem-date">
+              <span className="sem-cap">Ngày bắt đầu</span>
+              <input
+                className={`input${!info.start ? " is-error" : ""}`}
+                type="date"
+                aria-label={`Ngày bắt đầu HK${semester}`}
+                value={info.start}
+                onChange={(event) =>
+                  actions.setSemesterInfo(semester, { start: event.target.value })
+                }
+              />
+            </label>
+            <label className="sem-date">
+              <span className="sem-cap">Ngày kết thúc</span>
+              <input
+                className={`input${!info.end || (start && end && end <= start) ? " is-error" : ""}`}
+                type="date"
+                aria-label={`Ngày kết thúc HK${semester}`}
+                min={info.start || undefined}
+                value={info.end}
+                onChange={(event) => actions.setSemesterInfo(semester, { end: event.target.value })}
+              />
+            </label>
             <span className="sem-weeks">
               {weeks !== null ? `${weeks} tuần` : "—"}
               {start && start.getDay() !== 1 && (

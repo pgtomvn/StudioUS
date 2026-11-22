@@ -991,7 +991,7 @@ export function CoursesScreen() {
         ].map(([label, value]) => (
           <div className="panel trio" key={label}>
             <span className="display">{label}</span>
-            <span className="trio-num display">{value}</span>
+            <span className="trio-num num">{value}</span>
           </div>
         ))}
       </div>

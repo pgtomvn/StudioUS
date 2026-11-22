@@ -143,7 +143,7 @@ export function DashboardScreen() {
               <div className="stat-label">
                 <Icon name="heart" size={1} /> GPA
               </div>
-              <div className="stat-value display">
+              <div className="stat-value num">
                 {formatGpa(stats.gpa)}
                 {stats.gpa !== null && <small> / 10.0</small>}
               </div>
@@ -152,7 +152,7 @@ export function DashboardScreen() {
               <div className="stat-label">
                 <Icon name="star" size={1} /> Hạng
               </div>
-              <div className="stat-value display">{rankOf(stats.gpa)}</div>
+              <div className="stat-value num stat-rank">{rankOf(stats.gpa)}</div>
             </div>
             <div className="stat">
               <div className="stat-label">
@@ -198,7 +198,7 @@ export function DashboardScreen() {
                       ["Phút", parts.minutes, false],
                     ].map(([label, value, hot]) => (
                       <div key={label as string} className={`count-box${hot ? " is-hot" : ""}`}>
-                        <b className="display">{pad2(value as number)}</b>
+                        <b className="num">{pad2(value as number)}</b>
                         <span>{label}</span>
                       </div>
                     ))}

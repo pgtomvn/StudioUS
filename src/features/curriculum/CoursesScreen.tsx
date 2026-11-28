@@ -14,14 +14,15 @@ import {
   activeGroups,
   computeStats,
   fold,
+  isStudying,
   peCourses,
   peState,
   recordOf,
+  semesterCount,
   type GroupProgress,
 } from "../../domain/progress";
 import {
   LANGUAGE_CERTS,
-  MAX_SEMESTER,
   TOTAL_CREDITS_REQUIRED,
   convertScore,
   isPass,
@@ -30,12 +31,14 @@ import {
 } from "../../domain/rules";
 import { actions, getState, useAppState } from "../../lib/store";
 import { keepWords } from "../../lib/text";
+import { RetakeHistory, ScoreCalculator } from "./ScoreTools";
 import type {
   AppData,
   BlockId,
   ConditionState,
   Course,
   CourseGroup,
+  CourseRecord,
   CourseStatus,
   GradOptionId,
 } from "../../types";
@@ -43,9 +46,19 @@ import type {
 const STATUS_LABEL: Record<CourseStatus, string> = {
   todo: "Chưa học",
   doing: "Đang học",
+  retake: "Học lại",
   done: "Đã hoàn thành",
 };
-const SEMESTERS = Array.from({ length: MAX_SEMESTER }, (_, index) => index + 1);
+/** Bộ lọc trạng thái: Đạt / Chưa đạt thay cho “Đã hoàn thành” (theo điểm). */
+const STATUS_FILTERS: { value: string; label: string }[] = [
+  { value: "todo", label: "Chưa học" },
+  { value: "doing", label: "Đang học" },
+  { value: "retake", label: "Học lại" },
+  { value: "pass", label: "Đạt" },
+  { value: "fail", label: "Chưa đạt" },
+];
+const semesterList = (data: AppData) =>
+  Array.from({ length: semesterCount(data.profile) }, (_, index) => index + 1);
 
 interface Filters {
   query: string;
@@ -129,6 +142,8 @@ function CourseRow(props: { course: Course; group: CourseGroup; data: AppData; f
   const passed = hasScore && isPass(record.score);
   const current = data.profile.currentSemester;
   const ahead = chosen && record.semester !== null && record.semester > current;
+  const attempts = record.attempts?.length ?? 0;
+  const [history, setHistory] = useState(false);
 
   // Thao tác làm mất kết quả đã nhập: làm ngay, cho hoàn tác trong 10 giây (không hỏi xác nhận).
   const undoRecord = (text: string) => {
@@ -146,6 +161,14 @@ function CourseRow(props: { course: Course; group: CourseGroup; data: AppData; f
     actions.setRecord(course.id, { semester: value ? Number(value) : null });
   };
   const changeStatus = (status: CourseStatus) => {
+    if (status === "retake" && hasScore) {
+      // Lưu lần học vừa rồi vào lịch sử, mở lần học mới (hoàn tác được trong 10 giây).
+      const notify = undoRecord(
+        `Đã lưu lần ${attempts + 1} (HK${record.semester} · ${record.score}) vào lịch sử học lại của ${course.name}.`,
+      );
+      actions.startRetake(course.id);
+      return notify();
+    }
     if (hasScore && status !== "done") {
       const notify = undoRecord(`Đã xóa điểm ${record.score} của ${course.name}.`);
       actions.setRecord(course.id, { status, score: null });
@@ -200,6 +223,15 @@ function CourseRow(props: { course: Course; group: CourseGroup; data: AppData; f
               .join(" · ")}
           </small>
         )}
+        {attempts > 0 && (
+          <button
+            className="c-history"
+            title="Xem các lần học trước của học phần"
+            onClick={() => setHistory(true)}
+          >
+            ↻ Học {attempts + 1} lần · Lịch sử học lại
+          </button>
+        )}
       </span>
       <span className="c-tc c-center">
         {course.credits}
@@ -221,7 +253,7 @@ function CourseRow(props: { course: Course; group: CourseGroup; data: AppData; f
             onChange={(event) => changeSemester(event.target.value)}
           >
             <option value="">Chọn HK</option>
-            {SEMESTERS.map((semester) => (
+            {semesterList(data).map((semester) => (
               <option key={semester} value={semester}>
                 HK{semester}
               </option>
@@ -239,7 +271,12 @@ function CourseRow(props: { course: Course; group: CourseGroup; data: AppData; f
             onChange={(event) => changeStatus(event.target.value as CourseStatus)}
           >
             {Object.entries(STATUS_LABEL).map(([value, label]) => (
-              <option key={value} value={value}>
+              <option
+                key={value}
+                value={value}
+                // Học lại khi lần học hiện tại đã có điểm (chưa đạt hoặc muốn cải thiện).
+                disabled={value === "retake" && !hasScore && record.status !== "retake"}
+              >
                 {label}
               </option>
             ))}
@@ -250,15 +287,7 @@ function CourseRow(props: { course: Course; group: CourseGroup; data: AppData; f
           score={record.score}
           disabled={!chosen || record.status !== "done"}
         />
-        {/* Chữ, Hệ 4, Kết quả: ba ô riêng (bảng rộng là ba cột; dạng thẻ có nhãn ở trên) */}
-        <span className="c-field c-letter c-center">
-          <span className="c-cap">Chữ</span>
-          {converted ? (
-            <b className="c-grade">{converted.letter}</b>
-          ) : (
-            <span className="c-none">—</span>
-          )}
-        </span>
+        {/* Hệ 4, Kết quả: hai ô riêng (bảng rộng là hai cột; dạng thẻ có nhãn ở trên) */}
         <span className="c-field c-p4 c-center">
           <span className="c-cap">Hệ 4</span>
           {converted ? converted.point4.toFixed(1) : <span className="c-none">—</span>}
@@ -288,6 +317,7 @@ function CourseRow(props: { course: Course; group: CourseGroup; data: AppData; f
           </button>
         </div>
       )}
+      {history && <RetakeHistory course={course} onClose={() => setHistory(false)} />}
     </div>
   );
 }
@@ -315,7 +345,6 @@ function CourseHead() {
       <span>Học kỳ</span>
       <span>Trạng thái</span>
       <span>Điểm (hệ 10)</span>
-      <span className="c-center">Chữ</span>
       <span className="c-center">Hệ 4</span>
       <span>Kết quả</span>
     </div>
@@ -762,76 +791,79 @@ function ConditionsPanel({ data }: { data: AppData }) {
   const language = languageResult(conditions.langType, conditions.langScore, conditions.langScore2);
   const cert = language.cert;
   return (
-    <Panel
-      title="Điều kiện phụ & Ngoại ngữ"
-      actions={<span className="badge">Không tính vào {TOTAL_CREDITS_REQUIRED} TC và GPA</span>}
-    >
-      <div className="cond-grid">
-        <ConditionSeg
-          label="Giáo dục thể chất (4 TC)"
-          hint={[
-            "Tự cập nhật theo mục Giáo dục thể chất ở trên: đạt Thể dục 1 và 2 → Đạt; chọn Miễn → Miễn; đang học hoặc chưa học → Chưa.",
-          ]}
-          value={peState(data).state}
-        />
-        <ConditionSeg
-          label="GDQP – AN (4 TC)"
-          hint={CONDITION_COURSES.defense}
-          value={conditions.defense}
-          onChange={(defense) => actions.setConditions({ defense })}
-        />
-        <div>
-          <div className="field-label">Chứng chỉ ngoại ngữ đầu ra</div>
-          <div className={`lang-row${cert?.min2 !== undefined ? " has-two" : ""}`}>
-            <select
-              className="select"
-              aria-label="Loại chứng chỉ"
-              value={conditions.langType}
-              onChange={(event) =>
-                actions.setConditions({
-                  langType: event.target.value,
-                  langScore: null,
-                  langScore2: null,
-                })
-              }
-            >
-              {LANGUAGE_CERTS.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-            <NumberCommit
-              value={conditions.langScore}
-              max={cert?.max ?? 0}
-              label={cert?.label ?? "Điểm"}
-              onCommit={(langScore) => actions.setConditions({ langScore })}
-            />
-            {cert?.min2 !== undefined && (
+    // id để các dòng GDQP, ngoại ngữ ở Nhiệm vụ cuộn tới đây
+    <div id="group-conditions">
+      <Panel
+        title="Điều kiện phụ & Ngoại ngữ"
+        actions={<span className="badge">Không tính vào {TOTAL_CREDITS_REQUIRED} TC và GPA</span>}
+      >
+        <div className="cond-grid">
+          <ConditionSeg
+            label="Giáo dục thể chất (4 TC)"
+            hint={[
+              "Tự cập nhật theo mục Giáo dục thể chất ở trên: đạt Thể dục 1 và 2 → Đạt; chọn Miễn → Miễn; đang học hoặc chưa học → Chưa.",
+            ]}
+            value={peState(data).state}
+          />
+          <ConditionSeg
+            label="GDQP – AN (4 TC)"
+            hint={CONDITION_COURSES.defense}
+            value={conditions.defense}
+            onChange={(defense) => actions.setConditions({ defense })}
+          />
+          <div>
+            <div className="field-label">Chứng chỉ ngoại ngữ đầu ra</div>
+            <div className={`lang-row${cert?.min2 !== undefined ? " has-two" : ""}`}>
+              <select
+                className="select"
+                aria-label="Loại chứng chỉ"
+                value={conditions.langType}
+                onChange={(event) =>
+                  actions.setConditions({
+                    langType: event.target.value,
+                    langScore: null,
+                    langScore2: null,
+                  })
+                }
+              >
+                {LANGUAGE_CERTS.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
               <NumberCommit
-                value={conditions.langScore2}
-                max={cert.max2 ?? 0}
-                label={cert.label2 ?? "Điểm 2"}
-                onCommit={(langScore2) => actions.setConditions({ langScore2 })}
+                value={conditions.langScore}
+                max={cert?.max ?? 0}
+                label={cert?.label ?? "Điểm"}
+                onCommit={(langScore) => actions.setConditions({ langScore })}
               />
-            )}
-            {language.state === "pass" && <span className="badge good">ĐẠT CHUẨN</span>}
-            {language.state === "fail" && (
-              <span className="badge bad" title={`Tối thiểu ${cert?.display}`}>
-                CHƯA ĐẠT
-              </span>
-            )}
-            {language.state === "empty" && <span className="badge">CHƯA NHẬP</span>}
-          </div>
-          <div className="field-hint">Tối thiểu: {cert?.display}</div>
-          {CONDITION_COURSES.english.map((line) => (
-            <div key={line} className="field-hint">
-              {line}
+              {cert?.min2 !== undefined && (
+                <NumberCommit
+                  value={conditions.langScore2}
+                  max={cert.max2 ?? 0}
+                  label={cert.label2 ?? "Điểm 2"}
+                  onCommit={(langScore2) => actions.setConditions({ langScore2 })}
+                />
+              )}
+              {language.state === "pass" && <span className="badge good">ĐẠT CHUẨN</span>}
+              {language.state === "fail" && (
+                <span className="badge bad" title={`Tối thiểu ${cert?.display}`}>
+                  CHƯA ĐẠT
+                </span>
+              )}
+              {language.state === "empty" && <span className="badge">CHƯA NHẬP</span>}
             </div>
-          ))}
+            <div className="field-hint">Tối thiểu: {cert?.display}</div>
+            {CONDITION_COURSES.english.map((line) => (
+              <div key={line} className="field-hint">
+                {line}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-    </Panel>
+      </Panel>
+    </div>
   );
 }
 
@@ -839,9 +871,11 @@ function ConditionsPanel({ data }: { data: AppData }) {
 function FilterSelects({
   filters,
   set,
+  data,
 }: {
   filters: Filters;
   set: (patch: Partial<Filters>) => void;
+  data: AppData;
 }) {
   return (
     <>
@@ -852,7 +886,7 @@ function FilterSelects({
         onChange={(event) => set({ semester: event.target.value })}
       >
         <option value="">Học kỳ: Tất cả</option>
-        {SEMESTERS.map((semester) => (
+        {semesterList(data).map((semester) => (
           <option key={semester} value={semester}>
             HK{semester}
           </option>
@@ -878,7 +912,7 @@ function FilterSelects({
         onChange={(event) => set({ status: event.target.value })}
       >
         <option value="">Trạng thái</option>
-        {Object.entries(STATUS_LABEL).map(([value, label]) => (
+        {STATUS_FILTERS.map(({ value, label }) => (
           <option key={value} value={value}>
             {label}
           </option>
@@ -898,6 +932,14 @@ function FilterSelects({
   );
 }
 
+/** Bộ lọc trạng thái; Đạt / Chưa đạt xét theo điểm của lần học hiện tại. */
+function matchesStatus(record: CourseRecord, filter: string): boolean {
+  const scored = record.status === "done" && record.score !== null;
+  if (filter === "pass") return scored && isPass(record.score);
+  if (filter === "fail") return scored && !isPass(record.score);
+  return record.status === filter;
+}
+
 export function CoursesScreen() {
   const { data } = useAppState();
   const stats = computeStats(data);
@@ -906,6 +948,7 @@ export function CoursesScreen() {
   /** Tăng mỗi lần bấm “Sửa học kỳ học phần” để cuộn lại kể cả khi vẫn là học phần cũ. */
   const [jump, setJump] = useState(0);
   const [filterSheet, setFilterSheet] = useState(false);
+  const [calculator, setCalculator] = useState(false);
   const focusBlock = useMemo(() => {
     if (!focus) return null;
     if (BLOCKS.some((block) => block.id === focus)) return focus as BlockId;
@@ -920,12 +963,12 @@ export function CoursesScreen() {
         activeGroups(data).some(
           (group) =>
             group.block === block.id &&
-            group.courseIds.some((id) => recordOf(data, id).status === "doing"),
+            group.courseIds.some((id) => isStudying(recordOf(data, id))),
         );
     if (!Object.values(result).some(Boolean)) result.general = true;
     result.pe =
       (focus !== null && PE_GROUP.courseIds.includes(focus)) ||
-      PE_GROUP.courseIds.some((id) => recordOf(data, id).status === "doing");
+      PE_GROUP.courseIds.some((id) => isStudying(recordOf(data, id)));
     return result;
   });
   const set = (patch: Partial<Filters>) => setFilters((current) => ({ ...current, ...patch }));
@@ -963,7 +1006,7 @@ export function CoursesScreen() {
           return false;
         if (narrowing && !chosen) return false;
         if (filters.semester && String(record.semester ?? "") !== filters.semester) return false;
-        if (filters.status && record.status !== filters.status) return false;
+        if (filters.status && !matchesStatus(record, filters.status)) return false;
         if (filters.kind && course.kind !== filters.kind) return false;
         return true;
       });
@@ -981,7 +1024,13 @@ export function CoursesScreen() {
   return (
     <>
       <Hud />
-      <h1 className="screen-title display">Học phần</h1>
+      <div className="screen-head">
+        <h1 className="screen-title display">Học phần</h1>
+        <button className="btn calc-open" onClick={() => setCalculator(true)}>
+          <Icon name="calculator" size={1.5} /> Công cụ tính điểm
+        </button>
+      </div>
+      {calculator && <ScoreCalculator onClose={() => setCalculator(false)} />}
 
       <div className="stat-trio">
         {[
@@ -1022,7 +1071,7 @@ export function CoursesScreen() {
           value={filters.query}
           onChange={(event) => set({ query: event.target.value })}
         />
-        <FilterSelects filters={filters} set={set} />
+        <FilterSelects filters={filters} set={set} data={data} />
         <button
           className="btn btn-sm filter-clear"
           disabled={!filtering}
@@ -1176,7 +1225,7 @@ export function CoursesScreen() {
           }
         >
           <div style={{ display: "grid", gap: 10 }}>
-            <FilterSelects filters={filters} set={set} />
+            <FilterSelects filters={filters} set={set} data={data} />
           </div>
         </Modal>
       )}

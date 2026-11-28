@@ -34,10 +34,19 @@ export function formatDate(text: string): string {
   return date ? `${shortDate(date)}/${date.getFullYear()}` : "";
 }
 
-/** K26 nhập học năm 2026: HK1, HK2 thuộc năm học 2026–2027, HK3, HK4 thuộc 2027–2028… */
-export const COHORT_START_YEAR = 2026;
-export function academicYear(semester: number): string {
-  const year = COHORT_START_YEAR + Math.floor((semester - 1) / 2);
+/** Khóa chọn được ở hồ sơ và năm nhập học (HK1, HK2 thuộc năm học đầu tiên). */
+export const COHORTS: { id: string; startYear: number }[] = [
+  { id: "K25", startYear: 2025 },
+  { id: "K26", startYear: 2026 },
+];
+export const DEFAULT_COHORT = "K26";
+
+/** VD K26: HK1, HK2 thuộc năm học 2026–2027, HK3, HK4 thuộc 2027–2028… */
+export function academicYear(semester: number, cohort: string = DEFAULT_COHORT): string {
+  const start =
+    COHORTS.find((item) => item.id === cohort)?.startYear ??
+    COHORTS.find((item) => item.id === DEFAULT_COHORT)!.startYear;
+  const year = start + Math.floor((semester - 1) / 2);
   return `${year}–${year + 1}`;
 }
 

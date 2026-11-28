@@ -88,6 +88,22 @@ describe("kiểm tra file nhập", () => {
     expect(check("a.json", JSON.stringify(bad))).toContain("Có 2 dòng dữ liệu không hợp lệ");
   });
 
+  it("phiên bản dữ liệu v3; file v2 (trước 28/11/2026) vẫn khôi phục được và chuyển lên v3", () => {
+    expect(createDefaultData().version).toBe(3);
+    const v2 = createDefaultData() as unknown as Record<string, unknown>;
+    const profile = { ...(v2.profile as Record<string, unknown>) };
+    delete profile.semesterCount;
+    const result = validateImport(
+      "student_k26_2026-11-22.json",
+      JSON.stringify({ ...v2, version: 2, profile }),
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.version).toBe(3);
+      expect(result.data.profile.semesterCount).toBe(8);
+    }
+  });
+
   it("đặt tên file sao lưu theo ngày", () => {
     expect(exportFileName(new Date(2026, 10, 8))).toBe("student_k26_2026-11-08.json");
   });
@@ -128,14 +144,14 @@ describe("chuyển dữ liệu từ bản dựng trước", () => {
     meta: { lastSavedAt: null, lastExportAt: null },
   };
 
-  it("đọc khóa cũ fitquest:data, nâng lên phiên bản 2 và chuyển sang khóa mới", () => {
+  it("đọc khóa cũ fitquest:data, nâng lên phiên bản 3 (qua v2) và chuyển sang khóa mới", () => {
     const store = memoryStore({ "fitquest:data": JSON.stringify(v1) });
     const loaded = loadData(store);
     expect(loaded.status).toBe("ok");
     expect(store.items.has(DATA_KEY)).toBe(true);
     expect(store.items.has("fitquest:data")).toBe(false);
     const data = loaded.data;
-    expect(data.version).toBe(2);
+    expect(data.version).toBe(3);
     expect(data.profile.semesters).toEqual({ "2": { start: "2027-01-04", end: "" } });
     expect(Object.keys(data.records).sort()).toEqual(["BAA00005", "MTH00021"]);
     expect(data.selections["ge-social"]).toEqual(["BAA00005"]);

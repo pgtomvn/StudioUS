@@ -4,6 +4,7 @@ import { createCompletedSampleData, createSampleData } from "../../src/data/samp
 import {
   activeEntries,
   computeStats,
+  semesterGpa,
   peState,
   recordOf,
   scheduleCourses,
@@ -31,15 +32,15 @@ describe("bộ dữ liệu mẫu đủ để thử các chức năng", () => {
     expect(result.ok).toBe(true);
   });
 
-  it("điểm có đủ 8 bậc chữ, cả đạt và chưa đạt; đủ ba trạng thái", () => {
+  it("điểm có đủ 8 bậc (kể cả lần học trước), cả đạt và chưa đạt; đủ bốn trạng thái", () => {
     const scores = Object.values(data.records)
-      .filter((record) => record.score !== null)
-      .map((record) => record.score!);
+      .flatMap((record) => [record.score, ...(record.attempts ?? []).map((item) => item.score)])
+      .filter((score): score is number => score !== null);
     const letters = new Set(scores.map((score) => convertScore(score).letter));
     expect([...letters].sort()).toEqual(["A", "A+", "B", "B+", "C", "D", "D+", "F"].sort());
     expect(scores.some((score) => !isPass(score))).toBe(true);
     const statuses = new Set(Object.values(data.records).map((record) => record.status));
-    expect(statuses).toEqual(new Set(["todo", "doing", "done"]));
+    expect(statuses).toEqual(new Set(["todo", "doing", "retake", "done"]));
   });
 
   it("có học phần ở cả 4 khối; nhóm tự chọn có nhóm đủ, nhóm thiếu, nhóm chọn qua hộp tìm", () => {
@@ -161,5 +162,28 @@ describe("GPA của bộ mẫu đang học (tính tay)", () => {
     expect(stats.earned).toBe(17);
     expect(stats.gpa).toBeCloseTo((4 * 9.1 + 4 * 8.5 + 4 * 7.8 + 2 * 6.5 + 3 * 5.4) / 17, 10);
     expect(stats.gpa!.toFixed(2)).toBe("7.69");
+  });
+});
+
+describe("bộ mẫu có các trường hợp của góp ý 28/11", () => {
+  it("đang học: môn F ở HK1 đang học lại ở HK2, GPA HK2 chưa có, GPA HK1 tính cả môn rớt", () => {
+    expect(data.records.BAA00003).toMatchObject({
+      semester: 2,
+      status: "retake",
+      attempts: [{ semester: 1, score: 2.0 }],
+    });
+    expect(semesterGpa(data, 2).gpa).toBeNull();
+    const hk1 = semesterGpa(data, 1);
+    // 8 môn có điểm ở HK1 (kể cả lần 1 của môn học lại), Thể dục không tính
+    expect(hk1.gpa).toBeLessThan(computeStats(data).gpa!);
+  });
+
+  it("hoàn thành: K25, 9 học kỳ, hai môn học lại đạt ở HK9", () => {
+    const done = createCompletedSampleData(NOW);
+    expect(done.profile).toMatchObject({ cohort: "K25", currentSemester: 9, semesterCount: 9 });
+    const retaken = Object.values(done.records).filter((record) => record.attempts?.length);
+    expect(retaken).toHaveLength(2);
+    expect(retaken.every((record) => record.semester === 9 && isPass(record.score))).toBe(true);
+    expect(semesterGpa(done, 9).gpa).toBeCloseTo((2 * 7.0 + 4 * 6.8) / 6, 10);
   });
 });

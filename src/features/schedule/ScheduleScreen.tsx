@@ -2,8 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { navigate } from "../../app/nav";
 import { Field, Hud, Mascot, Modal, Panel, toast, undoToast, useNow } from "../../components/ui";
 import { COURSE_BY_ID } from "../../data/curriculum";
-import { recordOf, scheduleCourses } from "../../domain/progress";
-import { MAX_SEMESTER } from "../../domain/rules";
+import { recordOf, scheduleCourses, semesterCount } from "../../domain/progress";
 import { buildIcs, downloadText } from "../../lib/files";
 import { CLASS_COLORS, inkOn, isHexColor } from "../../lib/color";
 import { actions, getState, useAppState } from "../../lib/store";
@@ -270,14 +269,19 @@ function AddForm(props: {
           </button>
         </div>
       )}
-      <Field label="Học kỳ *" hint={`Năm học ${academicYear(semester)}`}>
+      <Field label="Học kỳ *" hint={`Năm học ${academicYear(semester, data.profile.cohort)}`}>
         <select
           className="select"
           value={semester}
           onChange={(event) => changeSemester(Number(event.target.value))}
         >
           {Array.from(
-            { length: Math.min(MAX_SEMESTER, Math.max(data.profile.currentSemester, semester)) },
+            {
+              length: Math.min(
+                semesterCount(data.profile),
+                Math.max(data.profile.currentSemester, semester),
+              ),
+            },
             (_, index) => index + 1,
           ).map((value) => (
             <option key={value} value={value}>
@@ -519,6 +523,7 @@ function ClassDetail({
   onClose: () => void;
 }) {
   const course = COURSE_BY_ID.get(item.courseId);
+  const { cohort } = useAppState().data.profile;
   return (
     <Modal
       title={courseName(item.courseId)}
@@ -546,7 +551,7 @@ function ClassDetail({
         <dd>{CLASS_KIND[item.kind]}</dd>
         <dt>Học kỳ</dt>
         <dd>
-          HK{item.semester} · {academicYear(item.semester)}
+          HK{item.semester} · {academicYear(item.semester, cohort)}
         </dd>
         <dt>Thứ</dt>
         <dd>{DAY_NAMES[item.day - 1] === "CN" ? "Chủ nhật" : DAY_NAMES[item.day - 1]}</dd>
@@ -901,9 +906,28 @@ export function ScheduleScreen() {
           + Thêm lịch thi
         </button>
         <span className="spacer" />
-        <button className="btn btn-export" disabled={!hasAnything} onClick={exportIcs}>
-          Xuất lên Google Calendar (.ics)
-        </button>
+        {/* Chú thích hiện khi di chuột hoặc chọn nút bằng bàn phím */}
+        <span className="tip-wrap">
+          <button
+            className="btn btn-export"
+            disabled={!hasAnything}
+            onClick={exportIcs}
+            aria-describedby="ics-tip"
+          >
+            Tải file lịch (.ics)
+          </button>
+          <span className="tip" role="tooltip" id="ics-tip">
+            {hasAnything ? (
+              <>
+                Tải lịch học và lịch thi về máy thành một file .ics. Thêm vào Google Calendar: mở
+                calendar.google.com → Cài đặt → Nhập và xuất → chọn file vừa tải → Nhập. Lịch của
+                học kỳ chưa nhập ngày bắt đầu sẽ không có trong file.
+              </>
+            ) : (
+              "Chưa có lịch học hay lịch thi nào để tải."
+            )}
+          </span>
+        </span>
       </div>
 
       <div className="sem-pick" role="group" aria-label="Chọn học kỳ">
@@ -1143,11 +1167,7 @@ export function ScheduleScreen() {
           )}
         </Panel>
 
-        <Panel
-          title="Lịch thi"
-          icon="hourglass"
-          actions={<span className="dim">gần nhất trước</span>}
-        >
+        <Panel title="Lịch thi" icon="hourglass" actions={<span className="dim">gần nhất</span>}>
           {exams.length === 0 ? (
             <p className="dim">Chưa có lịch thi, nhấn Thêm lịch thi để bắt đầu.</p>
           ) : (

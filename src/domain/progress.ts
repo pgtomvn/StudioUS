@@ -15,12 +15,61 @@ import type {
   CourseRecord,
   Profile,
 } from "../types";
-import { GRADUATION_MIN_GPA, TOTAL_CREDITS_REQUIRED, isPass, languageResult } from "./rules";
+import {
+  GRADUATION_MIN_GPA,
+  SEMESTER_LIMIT,
+  STANDARD_SEMESTERS,
+  TOTAL_CREDITS_REQUIRED,
+  isPass,
+  languageResult,
+} from "./rules";
 
 export const EMPTY_RECORD: CourseRecord = { semester: null, status: "todo", score: null };
 
 export function recordOf(data: AppData, courseId: string): CourseRecord {
   return data.records[courseId] ?? EMPTY_RECORD;
+}
+
+/** Đang học: lần đầu (doing) hoặc đang học lại (retake). */
+export const isStudying = (record: CourseRecord) =>
+  record.status === "doing" || record.status === "retake";
+
+/**
+ * Số học kỳ của kế hoạch: 8 theo CTĐT, nhiều hơn khi sinh viên thêm học kỳ (học chậm).
+ * Không bao giờ nhỏ hơn học kỳ hiện tại.
+ */
+export function semesterCount(profile: Profile): number {
+  return Math.min(
+    SEMESTER_LIMIT,
+    Math.max(STANDARD_SEMESTERS, profile.semesterCount || 0, profile.currentSemester),
+  );
+}
+
+/**
+ * GPA của một học kỳ (hệ 10) = Σ(TC × điểm hệ 10) / Σ TC của mọi học phần có điểm trong học kỳ đó,
+ * kể cả học phần chưa đạt và lần học trước của học phần học lại. Chỉ xét học phần thuộc 138 TC
+ * (không tính Thể dục, GDQP, Ngoại ngữ). Báo cáo chỉ nêu xếp loại theo Bảng 4 cho điểm trung bình
+ * học kỳ, không ghi công thức – cách tính này chưa đối chiếu Quy chế (xem docs/data-sources.md).
+ */
+export function semesterGpa(
+  data: AppData,
+  semester: number,
+): { gpa: number | null; credits: number } {
+  let credits = 0;
+  let sum = 0;
+  for (const { course } of activeEntries(data)) {
+    const record = recordOf(data, course.id);
+    const tries = [
+      ...(record.attempts ?? []),
+      ...(record.status === "done" ? [{ semester: record.semester, score: record.score }] : []),
+    ];
+    for (const item of tries)
+      if (item.semester === semester && item.score !== null) {
+        credits += course.credits;
+        sum += course.credits * item.score;
+      }
+  }
+  return { gpa: credits > 0 ? sum / credits : null, credits };
 }
 
 /** Nhóm học phần đang áp dụng: khối Tốt nghiệp chỉ lấy nhóm của phương án đã chọn. */
@@ -91,7 +140,8 @@ export function scheduleCourses(data: AppData): Course[] {
 
 export interface Warning {
   key: string;
-  block: BlockId;
+  /** Khối kiến thức; "condition" = điều kiện tốt nghiệp ngoài 138 TC (Thể chất, GDQP, ngoại ngữ). */
+  block: BlockId | "condition";
   blockName: string;
   kind: "BB" | "TC" | "—";
   subject: string;
@@ -170,7 +220,7 @@ export function computeStats(data: AppData): Stats {
 
   for (const { course, group } of entries) {
     const record = recordOf(data, course.id);
-    if (record.status === "doing") doing += course.credits;
+    if (isStudying(record)) doing += course.credits;
     if (record.semester !== null && record.semester > data.profile.currentSemester)
       aheadOfSemester.push(course);
     if (record.status === "done" && record.score !== null) {
@@ -191,9 +241,11 @@ export function computeStats(data: AppData): Stats {
       subject: course.name,
       message: failed
         ? "Chưa đạt – cần học lại."
-        : record.status === "doing"
-          ? "Đang học."
-          : "Chưa hoàn thành.",
+        : record.status === "retake"
+          ? "Đang học lại."
+          : record.status === "doing"
+            ? "Đang học."
+            : "Chưa hoàn thành.",
       tone: failed ? "failed" : "todo",
       focus: course.id,
       order: record.semester ?? course.plan[0] ?? 9,
@@ -260,12 +312,7 @@ export function computeStats(data: AppData): Stats {
       focus: "graduation",
       order: 7,
     });
-  warnings.sort(
-    (a, b) =>
-      Number(b.tone === "failed") - Number(a.tone === "failed") ||
-      a.order - b.order ||
-      a.key.localeCompare(b.key),
-  );
+  conditionWarnings(data).forEach((warning) => warnings.push(warning));
 
   const counted = blocks.reduce((sum, block) => sum + block.earned, 0);
   // GPA tích lũy = Σ(TC × điểm hệ 10) / TC tích lũy, cùng một tập học phần đạt (F-03, mục 4.2).
@@ -283,6 +330,12 @@ export function computeStats(data: AppData): Stats {
       if (record.semester !== null && record.semester > data.profile.currentSemester)
         aheadOfSemester.push(course);
     }
+  warnings.sort(
+    (a, b) =>
+      Number(b.tone === "failed") - Number(a.tone === "failed") ||
+      a.order - b.order ||
+      a.key.localeCompare(b.key),
+  );
   const conditionOk = (value: string) => value === "pass" || value === "exempt";
   const checks = [
     {
@@ -321,6 +374,69 @@ export function computeStats(data: AppData): Stats {
       !data.gradOption,
     aheadOfSemester,
   };
+}
+
+const CONDITION_BLOCK = "Điều kiện tốt nghiệp";
+
+/**
+ * Nhiệm vụ của các điều kiện tốt nghiệp ngoài 138 TC: Thể dục 1, 2 (khi không chọn Miễn), GDQP-AN,
+ * chuẩn ngoại ngữ. Nhờ vậy danh sách Nhiệm vụ chỉ trống khi đã xong hết, kể cả khi một môn Thể dục
+ * hay chứng chỉ bị đổi lại sau khi đã đủ điều kiện.
+ */
+function conditionWarnings(data: AppData): Warning[] {
+  const result: Warning[] = [];
+  const base = { block: "condition" as const, blockName: CONDITION_BLOCK, order: 10 };
+  if (data.conditions.pe !== "exempt")
+    for (const course of peCourses()) {
+      const record = recordOf(data, course.id);
+      if (record.status === "done" && isPass(record.score)) continue;
+      const failed = record.status === "done" && record.score !== null;
+      result.push({
+        ...base,
+        key: course.id,
+        blockName: "Giáo dục thể chất",
+        kind: course.kind,
+        subject: course.name,
+        message: failed
+          ? "Chưa đạt – cần học lại."
+          : record.status === "retake"
+            ? "Đang học lại."
+            : record.status === "doing"
+              ? "Đang học."
+              : "Chưa hoàn thành.",
+        tone: failed ? "failed" : "todo",
+        focus: course.id,
+      });
+    }
+  if (data.conditions.defense !== "pass" && data.conditions.defense !== "exempt")
+    result.push({
+      ...base,
+      key: "defense",
+      kind: "—",
+      subject: "Giáo dục quốc phòng – An ninh",
+      message: "Chưa có chứng chỉ GDQP-AN.",
+      tone: "todo",
+      focus: "conditions",
+    });
+  const language = languageResult(
+    data.conditions.langType,
+    data.conditions.langScore,
+    data.conditions.langScore2,
+  );
+  if (language.state !== "pass")
+    result.push({
+      ...base,
+      key: "language",
+      kind: "—",
+      subject: "Chuẩn ngoại ngữ đầu ra",
+      message:
+        language.state === "empty"
+          ? "Chưa nhập chứng chỉ."
+          : `Chưa đạt mức tối thiểu (${language.cert?.display}).`,
+      tone: language.state === "fail" ? "failed" : "todo",
+      focus: "conditions",
+    });
+  return result;
 }
 
 /** GPA hiện 2 chữ số thập phân để khớp với ngưỡng xếp loại (VD 7.96 là Khá, không làm tròn thành 8.0). */

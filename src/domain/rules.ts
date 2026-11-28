@@ -23,7 +23,10 @@ export const TOTAL_CREDITS_REQUIRED = 138;
 export const PASS_SCORE = 5.0;
 /** GPA hệ 10 tối thiểu để tốt nghiệp (mục 4.3). */
 export const GRADUATION_MIN_GPA = 5.0;
-export const MAX_SEMESTER = 8;
+/** Số học kỳ chuẩn của CTĐT (mục 8, 4 năm). */
+export const STANDARD_SEMESTERS = 8;
+/** Giới hạn số học kỳ khi thêm học kỳ cho người học chậm (giới hạn của ứng dụng, không phải quy chế). */
+export const SEMESTER_LIMIT = 16;
 
 /** Quy đổi điểm học phần thang 10 → điểm chữ, hệ 4 (F-02, Điều 11 Quy chế). */
 const LETTER_SCALE: { min: number; letter: string; point4: number }[] = [

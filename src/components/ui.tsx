@@ -31,6 +31,8 @@ export type IconName =
   | "floppy"
   | "shield"
   | "faction"
+  | "calculator"
+  | "heartTerm"
   | "student"
   | "note"
   | "speaker"
@@ -383,7 +385,7 @@ export function Hud() {
       </span>
       <span className="hud-stat">
         <Icon name="heart" size={1} />
-        GPA: <b>{formatGpa(stats.gpa)}</b>
+        GPA tổng: <b>{formatGpa(stats.gpa)}</b>
         {stats.gpa !== null && " / 10"}
       </span>
     </div>

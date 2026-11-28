@@ -9,7 +9,9 @@ import type { AppData, ClassEntry, CourseRecord, ExamEntry, SemesterInfo } from 
  *
  * Các trường hợp được phủ (kiểm tra trong tests/unit/sample.test.ts):
  *  - Điểm HK1 đủ 8 bậc A+, A, B+, B, C (đạt) và D+, D, F (chưa đạt → danh sách “cần học lại”).
- *  - Trạng thái Chưa học / Đang học / Đã hoàn thành; một học phần chọn HK3 (vượt học kỳ hiện tại).
+ *  - Học lại: môn rớt điểm F ở HK1 đang học lại ở HK2 (có lịch sử học lại, lọc “Học lại”).
+ *  - Trạng thái Chưa học / Đang học / Học lại / Đã hoàn thành; một học phần chọn HK3 (vượt học kỳ
+ *    hiện tại). GPA HK2 chưa có (chưa môn nào của HK2 có điểm), GPA HK1 tính cả môn chưa đạt.
  *  - Học phần ở cả 4 khối; nhóm tự chọn đã chọn đủ, đang thiếu (Trái đất – Môi trường) và nhóm
  *    chọn qua hộp tìm kiếm (Phụ lục 1); phương án tốt nghiệp 3 có chọn học phần tốt nghiệp.
  *  - Giáo dục thể chất: Thể dục 1 đạt, Thể dục 2 đang học (điều kiện Thể chất: Chưa);
@@ -59,7 +61,13 @@ export function createSampleData(now = new Date()): AppData {
       BAA00101: { semester: 1, status: "done", score: 5.4 }, // C
       BAA00102: { semester: 1, status: "done", score: 4.6 }, // D+ – chưa đạt
       MTH00045: { semester: 1, status: "done", score: 3.5 }, // D – chưa đạt
-      BAA00003: { semester: 1, status: "done", score: 2.0 }, // F – chưa đạt
+      // F ở HK1 – đang học lại ở HK2 (lịch sử học lại giữ lần 1)
+      BAA00003: {
+        semester: 2,
+        status: "retake",
+        score: null,
+        attempts: [{ semester: 1, score: 2.0 }],
+      },
       BAA00021: { semester: 1, status: "done", score: 8.0 }, // Thể dục 1
       // HK2 – đang học
       BAA00004: { semester: 2, status: "doing", score: null },
@@ -250,12 +258,15 @@ export function createSampleData(now = new Date()): AppData {
 }
 
 /**
- * Bộ dữ liệu MẪU ĐÃ HOÀN THÀNH chương trình (HK8), do nhóm tự đặt. Dùng để thử trạng thái cuối:
+ * Bộ dữ liệu MẪU ĐÃ HOÀN THÀNH chương trình, do nhóm tự đặt. Sinh viên khóa K25 học chậm: thêm HK9
+ * để học lại, hoàn thành ở HK9. Dùng để thử trạng thái cuối:
  *  - Đạt mọi học phần bắt buộc; mỗi nhóm tự chọn chọn vừa đủ TC; phương án tốt nghiệp Khóa luận.
  *  - Học dư một học phần tự chọn tự do: TC tích lũy vượt 138 (VD 142 / 138), thanh tiến độ đầy,
  *    đổi màu hoàn thành, còn lại 0 TC.
  *  - Thể dục 1, 2 đạt, GDQP-AN đạt, IELTS 6.0 (đạt chuẩn) → đủ điều kiện tốt nghiệp.
- *  - Lịch học HK8 và lịch thi đã qua (không còn lịch thi sắp tới).
+ *  - Học lại: một môn rớt 2 lần (HK1, HK3) rồi đạt ở HK9, một môn rớt ở HK2 rồi đạt ở HK9; số học
+ *    kỳ của kế hoạch là 9 (thêm học kỳ), GPA HK9 tính từ hai môn học lại.
+ *  - Lịch học HK9 và lịch thi đã qua (không còn lịch thi sắp tới).
  * Điểm cố định theo mã học phần (6.0–9.6, không ngẫu nhiên) để kết quả kiểm thử ổn định.
  */
 export function createCompletedSampleData(now = new Date()): AppData {
@@ -264,11 +275,16 @@ export function createCompletedSampleData(now = new Date()): AppData {
     const date = new Date(base.getFullYear(), base.getMonth(), base.getDate() + offset);
     return toDateInput(date);
   };
-  const hk8 = mondayOf(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7 * 15));
+  const last = 9;
+  const hkLast = mondayOf(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7 * 15));
   const startOf = (semester: number) =>
-    new Date(hk8.getFullYear(), hk8.getMonth(), hk8.getDate() - 7 * 22 * (8 - semester));
+    new Date(
+      hkLast.getFullYear(),
+      hkLast.getMonth(),
+      hkLast.getDate() - 7 * 22 * (last - semester),
+    );
   const semesters: Record<string, SemesterInfo> = {};
-  for (let semester = 1; semester <= 8; semester++)
+  for (let semester = 1; semester <= last; semester++)
     semesters[String(semester)] = {
       start: day(startOf(semester), 0),
       end: day(startOf(semester), 7 * 18 - 1),
@@ -313,11 +329,27 @@ export function createCompletedSampleData(now = new Date()): AppData {
   // Giáo dục thể chất (không tính vào 138 TC và GPA)
   records.BAA00021 = { semester: 1, status: "done", score: 8.0 };
   records.BAA00022 = { semester: 2, status: "done", score: 8.5 };
+  // Học lại: rớt 2 lần rồi đạt ở HK9; rớt 1 lần rồi đạt ở HK9.
+  records.BAA00003 = {
+    semester: last,
+    status: "done",
+    score: 7.0,
+    attempts: [
+      { semester: 1, score: 3.1 },
+      { semester: 3, score: 4.5 },
+    ],
+  };
+  records.CSC10004 = {
+    semester: last,
+    status: "done",
+    score: 6.8,
+    attempts: [{ semester: 2, score: 4.2 }],
+  };
 
   const lesson = (id: string, patch: Partial<ClassEntry> & Pick<ClassEntry, "courseId">) => ({
     id,
     kind: "theory" as const,
-    semester: 8,
+    semester: last,
     day: 2,
     start: "07:30",
     end: "09:30",
@@ -330,7 +362,14 @@ export function createCompletedSampleData(now = new Date()): AppData {
   });
   return {
     ...data,
-    profile: { ...data.profile, name: "Cử nhân mẫu", currentSemester: 8, semesters },
+    profile: {
+      ...data.profile,
+      name: "Cử nhân mẫu",
+      cohort: "K25",
+      currentSemester: last,
+      semesterCount: last,
+      semesters,
+    },
     records,
     selections,
     gradOption,
@@ -345,6 +384,13 @@ export function createCompletedSampleData(now = new Date()): AppData {
     classes: [
       lesson("c1", { courseId: "BAA00003", day: 4, room: "E101", color: "#ffe66b" }),
       lesson("c2", {
+        courseId: "CSC10004",
+        day: 3,
+        room: "E202",
+        color: "#ffb0c8",
+        note: "Học lại",
+      }),
+      lesson("c3", {
         courseId: "CSC10251",
         day: 2,
         start: "13:30",
@@ -358,7 +404,7 @@ export function createCompletedSampleData(now = new Date()): AppData {
       {
         id: "x1",
         courseId: "BAA00003",
-        semester: 8,
+        semester: last,
         kind: "final",
         date: day(new Date(now.getFullYear(), now.getMonth(), now.getDate()), -10),
         time: "07:30",
@@ -380,7 +426,7 @@ export const SAMPLES: { id: string; label: string; done: string; create: () => A
   },
   {
     id: "completed",
-    label: "Mẫu đã hoàn thành (HK8)",
+    label: "Mẫu đã hoàn thành (HK9)",
     done: "Đã nạp dữ liệu mẫu đã hoàn thành chương trình (minh họa).",
     create: () => createCompletedSampleData(),
   },

@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { COURSE_BY_ID, GROUP_BY_ID, GROUPS, PE_GROUP } from "../data/curriculum";
-import { peState } from "../domain/progress";
+import { peState, semesterCount } from "../domain/progress";
 import { isPass } from "../domain/rules";
 import { affection, affectionLines, react } from "./mascot";
 import type {
@@ -209,9 +209,53 @@ export const actions = {
         say: "Không sao đâu, lần sau mình cùng cố gắng nha!",
         ms: 3200,
       });
+    } else if (patch.status === "retake" && previous.status !== "retake") {
+      react({
+        face: "happy",
+        motion: "wiggle",
+        say: `Học lại ${course?.name} nha, lần này chắc chắn qua!`,
+      });
     } else if (patch.status === "doing" && previous.status !== "doing") {
       react({ face: "happy", motion: "wiggle", say: `Cố lên với môn ${course?.name} nha!` });
     }
+  },
+  /**
+   * Chọn “Học lại”: lưu lần học hiện tại (học kỳ + điểm) vào lịch sử, mở lần học mới ở học kỳ hiện
+   * tại (hoặc học kỳ kế tiếp nếu lần trước đã ở học kỳ hiện tại), trạng thái Học lại, chưa có điểm.
+   */
+  startRetake(courseId: string) {
+    const previous = state.data.records[courseId];
+    if (!previous || previous.status !== "done" || previous.score === null) return;
+    const { profile } = state.data;
+    const last = previous.semester ?? profile.currentSemester;
+    const semester =
+      profile.currentSemester > last
+        ? profile.currentSemester
+        : Math.min(semesterCount(profile), last + 1);
+    actions.setRecord(courseId, {
+      semester,
+      status: "retake",
+      score: null,
+      attempts: [
+        ...(previous.attempts ?? []),
+        { semester: previous.semester, score: previous.score },
+      ],
+    });
+  },
+  /** Xóa một lần học trong lịch sử học lại (nhập nhầm). */
+  removeAttempt(courseId: string, index: number) {
+    const record = state.data.records[courseId];
+    if (!record?.attempts?.[index]) return;
+    const attempts = record.attempts.filter((_, position) => position !== index);
+    const next: CourseRecord = { ...record, attempts };
+    if (attempts.length === 0) delete next.attempts;
+    // Hết lịch sử thì “Học lại” không còn lần trước: trở về Đang học.
+    if (attempts.length === 0 && next.status === "retake") next.status = "doing";
+    commit({ ...state.data, records: { ...state.data.records, [courseId]: next } });
+  },
+  /** Thêm/bớt học kỳ của kế hoạch (học chậm hơn 8 học kỳ). */
+  setSemesterCount(count: number) {
+    actions.updateProfile({ semesterCount: count });
   },
   /** Tick / bỏ tick học phần tự chọn trong một nhóm; bỏ tick thì xóa kết quả đã nhập. */
   toggleSelection(groupId: string, courseId: string, selected: boolean) {

@@ -4,7 +4,8 @@ export type ScreenId = "dashboard" | "courses" | "schedule" | "data";
 export type BlockId = "general" | "foundation" | "major" | "graduation";
 /** Loại học phần theo cột "Loại HP" của CTĐT: BB = bắt buộc, TC = tự chọn. */
 export type CourseKind = "BB" | "TC";
-export type CourseStatus = "todo" | "doing" | "done";
+/** retake = đang học lại (lần học trước đã có điểm, lưu trong `attempts`). */
+export type CourseStatus = "todo" | "doing" | "retake" | "done";
 export type ConditionState = "none" | "pass" | "exempt";
 export type GradOptionId = "thesis" | "internship" | "project";
 
@@ -37,11 +38,20 @@ export interface CourseGroup {
   gradOption?: GradOptionId;
 }
 
+/** Một lần học trước đó của học phần (lịch sử học lại). */
+export interface Attempt {
+  semester: number | null;
+  score: number | null;
+}
+
+/** Lần học hiện tại (lần gần nhất) của học phần; điểm của lần này được tính vào TC và GPA tích lũy. */
 export interface CourseRecord {
   semester: number | null;
   status: CourseStatus;
   /** null = chưa có điểm; khác với điểm 0. */
   score: number | null;
+  /** Các lần học trước, cũ nhất trước (chỉ có khi đã chọn “Học lại”). */
+  attempts?: Attempt[];
 }
 
 export interface SemesterInfo {
@@ -53,8 +63,11 @@ export interface SemesterInfo {
 
 export interface Profile {
   name: string;
+  /** "K25" hoặc "K26": quyết định năm học của từng học kỳ. */
   cohort: string;
   currentSemester: number;
+  /** Số học kỳ của kế hoạch: 8 theo CTĐT, thêm được khi học chậm (tối đa SEMESTER_LIMIT). */
+  semesterCount: number;
   /** Thông tin từng học kỳ, khóa là số học kỳ ("1", "2", …). */
   semesters: Record<string, SemesterInfo>;
   /** data URL ảnh đại diện đã thu nhỏ, hoặc null để dùng mascot mặc định. */

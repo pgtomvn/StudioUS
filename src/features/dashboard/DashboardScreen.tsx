@@ -2,7 +2,7 @@ import { navigate } from "../../app/nav";
 import { Bar, Icon, Mascot, Panel, undoToast, useNow } from "../../components/ui";
 import { COURSE_BY_ID, MAJOR_NAME } from "../../data/curriculum";
 import { SAMPLES } from "../../data/sample.demo";
-import { computeStats, formatGpa, semesterInfoStatus } from "../../domain/progress";
+import { computeStats, formatGpa, semesterGpa, semesterInfoStatus } from "../../domain/progress";
 import { TOTAL_CREDITS_REQUIRED, rankOf } from "../../domain/rules";
 import { actions, getState, useAppState } from "../../lib/store";
 import { keepWords } from "../../lib/text";
@@ -23,7 +23,9 @@ export function DashboardScreen() {
   const stats = computeStats(data);
   const exam = nextExam(data.exams, now);
   const parts = exam ? countdownParts(examDate(exam), now) : null;
-  const year = Math.min(4, Math.ceil(data.profile.currentSemester / 2));
+  // Năm học theo học kỳ hiện tại (HK9, HK10 của người học chậm là năm 5).
+  const year = Math.ceil(data.profile.currentSemester / 2);
+  const termGpa = semesterGpa(data, data.profile.currentSemester).gpa;
   const semesterInfo = semesterInfoStatus(data.profile);
   const scheduleAhead = semestersAhead(data);
   const needsAttention =
@@ -140,13 +142,21 @@ export function DashboardScreen() {
           </div>
           <div className="well stat-strip">
             <div className="stat">
-              <div className="stat-label">
-                <Icon name="heart" size={1} /> GPA
+              <div className="stat-label" title="GPA tổng (GPA tích lũy) của các học phần đã đạt">
+                <Icon name="heart" size={1} /> GPA tổng{" "}
+                <span className="stat-scale">(thang 10)</span>
               </div>
-              <div className="stat-value num">
-                {formatGpa(stats.gpa)}
-                {stats.gpa !== null && <small> / 10.0</small>}
+              <div className="stat-value num">{formatGpa(stats.gpa)}</div>
+            </div>
+            <div className="stat">
+              <div
+                className="stat-label"
+                title={`GPA học kỳ hiện tại (HK${data.profile.currentSemester}): mọi học phần đã có điểm trong học kỳ`}
+              >
+                <Icon name="heartTerm" size={1} /> GPA HK{data.profile.currentSemester}{" "}
+                <span className="stat-scale">(thang 10)</span>
               </div>
+              <div className="stat-value num">{formatGpa(termGpa)}</div>
             </div>
             <div className="stat">
               <div className="stat-label">

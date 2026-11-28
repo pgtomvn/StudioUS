@@ -1,21 +1,25 @@
 import { useEffect, useRef, useState } from "react";
 import { takeFocus } from "../../app/nav";
 import { Avatar, Field, Hud, Icon, Modal, Panel, toast, undoToast } from "../../components/ui";
-import { semesterInfoStatus } from "../../domain/progress";
-import { MAX_SEMESTER } from "../../domain/rules";
+import { semesterCount, semesterInfoStatus } from "../../domain/progress";
+import { SEMESTER_LIMIT, STANDARD_SEMESTERS } from "../../domain/rules";
 import { MAJOR_NAME } from "../../data/curriculum";
 import { SAMPLES } from "../../data/sample.demo";
-import { downloadText, fileToAvatar } from "../../lib/files";
+import { buildCsv, workbookSheets } from "../../lib/export";
+import { downloadBlob, downloadText, fileToAvatar } from "../../lib/files";
 import {
   DATA_VERSION,
   exportFileName,
   summarize,
   validateImport,
+  type ExportFormat,
   type ImportResult,
 } from "../../lib/storage/storage";
 import { actions, getState, useAppState } from "../../lib/store";
 import { keepWords } from "../../lib/text";
+import { buildXlsx } from "../../lib/xlsx";
 import {
+  COHORTS,
   academicYear,
   formatDateTime,
   mondayOf,
@@ -23,11 +27,39 @@ import {
   semesterWeekCount,
 } from "../../lib/time";
 
-function exportBackup() {
+const FORMATS: { id: ExportFormat; label: string; note: string }[] = [
+  {
+    id: "json",
+    label: "JSON",
+    note: "Bản sao lưu đầy đủ: hồ sơ, kết quả học tập (kể cả lịch sử học lại), chứng chỉ ngoại ngữ, lịch học, lịch thi. Chỉ file .json khôi phục lại được vào ứng dụng.",
+  },
+  {
+    id: "csv",
+    label: "CSV",
+    note: "Bảng kết quả học tập (mỗi học phần một dòng), mở được bằng Excel hoặc Google Trang tính. Dùng để xem, in, nộp; không khôi phục lại được.",
+  },
+  {
+    id: "xlsx",
+    label: "Excel",
+    note: "File Excel .xlsx gồm 4 trang: Tổng quan, Học phần, Lịch học, Lịch thi. Dùng để xem, in, nộp; không khôi phục lại được.",
+  },
+];
+
+function exportData(format: ExportFormat = "json") {
   actions.markExported();
   const data = getState().data;
-  downloadText(exportFileName(new Date()), JSON.stringify(data, null, 2), "application/json");
-  toast("Đã tải file sao lưu");
+  const now = new Date();
+  const name = exportFileName(now, data.profile.cohort, format);
+  if (format === "json") downloadText(name, JSON.stringify(data, null, 2), "application/json");
+  else if (format === "csv") downloadText(name, buildCsv(data), "text/csv;charset=utf-8");
+  else
+    downloadBlob(
+      name,
+      new Blob([buildXlsx(workbookSheets(data, now))], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
+    );
+  toast(`Đã sao lưu ra file ${name}`);
 }
 
 /** Thông tin từng học kỳ từ HK1 tới học kỳ hiện tại (bắt buộc nhập đủ). */
@@ -74,7 +106,7 @@ function SemesterInfo({ highlight }: { highlight: boolean }) {
           <div key={semester} className={`sem-row${problem ? " is-missing" : ""}`}>
             <span className="sem-name">
               <b>HK{semester}</b>
-              <small className="dim">Năm học {academicYear(semester)}</small>
+              <small className="dim">Năm học {academicYear(semester, profile.cohort)}</small>
             </span>
             <label className="sem-date">
               <span className="sem-cap">Ngày bắt đầu</span>
@@ -124,9 +156,75 @@ function SemesterInfo({ highlight }: { highlight: boolean }) {
 const formatShort = (date: Date) =>
   `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}`;
 
+/**
+ * Số học kỳ của kế hoạch: 8 theo CTĐT; người học chậm thêm HK9, HK10… Học kỳ thêm vào hiện ở mọi nơi
+ * chọn học kỳ (Học phần, bộ lọc, TKB & Thi, học kỳ hiện tại). Chỉ bớt được học kỳ cuối khi học kỳ
+ * đó chưa có dữ liệu và không phải học kỳ hiện tại.
+ */
+function SemesterCount() {
+  const { data } = useAppState();
+  const count = semesterCount(data.profile);
+  const last = String(count);
+  const lastUsed =
+    data.profile.currentSemester >= count ||
+    Object.values(data.records).some(
+      (record) =>
+        record.semester === count ||
+        (record.attempts ?? []).some((item) => item.semester === count),
+    ) ||
+    data.classes.some((item) => item.semester === count) ||
+    data.exams.some((item) => item.semester === count) ||
+    !!data.profile.semesters[last]?.start;
+  const canRemove = count > STANDARD_SEMESTERS && !lastUsed;
+  return (
+    <div className="field sem-count">
+      <span className="field-label">Số học kỳ</span>
+      <div className="sem-count-row">
+        <b className="sem-count-value">{count} HK</b>
+        <button
+          className="btn btn-sm"
+          disabled={count >= SEMESTER_LIMIT}
+          title={
+            count >= SEMESTER_LIMIT
+              ? `Tối đa ${SEMESTER_LIMIT} học kỳ`
+              : `Thêm HK${count + 1} khi cần học thêm (VD học lại, học chậm)`
+          }
+          onClick={() => {
+            actions.setSemesterCount(count + 1);
+            toast(`Đã thêm HK${count + 1}`);
+          }}
+        >
+          + Thêm học kỳ
+        </button>
+        {count > STANDARD_SEMESTERS && (
+          <button
+            className="btn btn-sm"
+            disabled={!canRemove}
+            title={
+              canRemove
+                ? `Bớt HK${count}`
+                : `HK${count} đang là học kỳ hiện tại hoặc đã có dữ liệu (học phần, lịch, ngày học kỳ)`
+            }
+            onClick={() => {
+              actions.setSemesterCount(count - 1);
+              toast(`Đã bớt HK${count}`);
+            }}
+          >
+            − Bớt
+          </button>
+        )}
+      </div>
+      <span className="field-hint">
+        CTĐT xếp {STANDARD_SEMESTERS} học kỳ; học chậm thì thêm học kỳ.
+      </span>
+    </div>
+  );
+}
+
 function ProfileForm({ focusSemester }: { focusSemester: boolean }) {
   const { data } = useAppState();
   const profile = data.profile;
+  const count = semesterCount(profile);
   const [name, setName] = useState(profile.name);
   const [nameError, setNameError] = useState(false);
   // Đồng bộ lại khi hồ sơ đổi từ nơi khác (khôi phục file, nạp dữ liệu mẫu, đặt lại).
@@ -163,16 +261,23 @@ function ProfileForm({ focusSemester }: { focusSemester: boolean }) {
           {/* ngành cố định theo CTĐT: chỉ hiển thị, chữ tự xuống dòng khi ô hẹp */}
           <span className="input readonly-value">{keepWords(MAJOR_NAME)}</span>
         </Field>
-        <Field label="Khóa">
+        <Field label="Khóa" hint={`HK1 thuộc năm học ${academicYear(1, profile.cohort)}`}>
           <select
             className="select"
             value={profile.cohort}
             onChange={(event) => actions.updateProfile({ cohort: event.target.value })}
           >
-            <option value="K26">K26</option>
+            {COHORTS.map((cohort) => (
+              <option key={cohort.id} value={cohort.id}>
+                {cohort.id}
+              </option>
+            ))}
           </select>
         </Field>
-        <Field label="HK hiện tại *" hint={`Năm học ${academicYear(profile.currentSemester)}`}>
+        <Field
+          label="HK hiện tại *"
+          hint={`Năm học ${academicYear(profile.currentSemester, profile.cohort)}`}
+        >
           <select
             id="current-semester"
             className={`select${focusSemester ? " is-focus" : ""}`}
@@ -181,13 +286,14 @@ function ProfileForm({ focusSemester }: { focusSemester: boolean }) {
               actions.updateProfile({ currentSemester: Number(event.target.value) })
             }
           >
-            {Array.from({ length: MAX_SEMESTER }, (_, index) => index + 1).map((semester) => (
+            {Array.from({ length: count }, (_, index) => index + 1).map((semester) => (
               <option key={semester} value={semester}>
                 HK{semester} · Năm {Math.ceil(semester / 2)}
               </option>
             ))}
           </select>
         </Field>
+        <SemesterCount />
         <div className="field">
           <span className="field-label">Ảnh đại diện</span>
           <div className="avatar-pick">
@@ -218,6 +324,37 @@ function ProfileForm({ focusSemester }: { focusSemester: boolean }) {
   );
 }
 
+function ExportPanel() {
+  const { data } = useAppState();
+  const [format, setFormat] = useState<ExportFormat>("json");
+  const chosen = FORMATS.find((item) => item.id === format)!;
+  return (
+    <Panel title="Sao lưu" className="io-panel">
+      <div className="seg export-seg" role="group" aria-label="Định dạng file">
+        {FORMATS.map((item) => (
+          <button
+            key={item.id}
+            className={`btn${format === item.id ? " is-on" : ""}`}
+            aria-pressed={format === item.id}
+            onClick={() => setFormat(item.id)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+      <p>{chosen.note}</p>
+      <div className="well">
+        Tên file:
+        <br />
+        {exportFileName(new Date(), data.profile.cohort, format)}
+      </div>
+      <button className="btn btn-good btn-lg btn-block" onClick={() => exportData(format)}>
+        ⬇ Sao lưu
+      </button>
+    </Panel>
+  );
+}
+
 function ImportPanel() {
   const [picked, setPicked] = useState<{ name: string; result: ImportResult } | null>(null);
   const [over, setOver] = useState(false);
@@ -244,7 +381,7 @@ function ImportPanel() {
   };
 
   return (
-    <Panel title="Khôi phục từ file" className="io-panel">
+    <Panel title="Khôi phục" className="io-panel">
       <button
         className={`dropzone${over ? " is-over" : ""}`}
         onClick={() => fileRef.current?.click()}
@@ -301,8 +438,8 @@ function ImportPanel() {
               <button className="btn" onClick={() => setConfirming(false)}>
                 Hủy
               </button>
-              <button className="btn btn-good" onClick={exportBackup}>
-                Xuất bản sao lưu hiện tại trước
+              <button className="btn btn-good" onClick={() => exportData()}>
+                Sao lưu dữ liệu hiện tại trước
               </button>
               <button className="btn btn-danger" onClick={restore}>
                 Ghi đè và khôi phục
@@ -343,8 +480,8 @@ function ResetPanel() {
               <button className="btn" onClick={close}>
                 Hủy
               </button>
-              <button className="btn btn-good" onClick={exportBackup}>
-                Xuất sao lưu trước
+              <button className="btn btn-good" onClick={() => exportData()}>
+                Sao lưu trước
               </button>
               <button
                 className="btn btn-danger"
@@ -363,8 +500,7 @@ function ResetPanel() {
         >
           <p>
             Bạn sẽ mất: hồ sơ sinh viên, toàn bộ trạng thái và điểm học phần, chứng chỉ ngoại ngữ,
-            lịch học và lịch thi. Sau khi xóa chỉ có 10 giây để bấm “Hoàn tác”, nên xuất sao lưu
-            trước.
+            lịch học và lịch thi. Sau khi xóa chỉ có 10 giây để bấm “Hoàn tác”, nên sao lưu trước.
           </p>
           <Field label="Gõ chữ RESET để xác nhận">
             <input
@@ -415,8 +551,8 @@ export function DataScreen() {
             <span>{formatDateTime(data.meta.lastSavedAt) || "Chưa có"}</span>
           </div>
           <div className="slot-item">
-            <small>Lần xuất gần nhất</small>
-            <span>{formatDateTime(data.meta.lastExportAt) || "Chưa từng xuất"}</span>
+            <small>Lần sao lưu gần nhất</small>
+            <span>{formatDateTime(data.meta.lastExportAt) || "Chưa sao lưu"}</span>
           </div>
           <div className="slot-item">
             <small>Phiên bản dữ liệu</small>
@@ -434,20 +570,7 @@ export function DataScreen() {
       <ProfileForm focusSemester={focusSemester} />
 
       <div className="io-grid">
-        <Panel title="Sao lưu ra file" className="io-panel">
-          <p>
-            File sẽ gồm: Hồ sơ, Kết quả học tập, Chứng chỉ ngoại ngữ, Lịch học và lịch thi, Cấu
-            hình.
-          </p>
-          <div className="well">
-            Tên file:
-            <br />
-            {exportFileName(new Date())}
-          </div>
-          <button className="btn btn-good btn-lg btn-block" onClick={exportBackup}>
-            ⬇ Tải file sao lưu
-          </button>
-        </Panel>
+        <ExportPanel />
         <ImportPanel />
       </div>
 
@@ -460,8 +583,8 @@ export function DataScreen() {
             Dữ liệu chỉ nằm trong trình duyệt này; xóa dữ liệu duyệt web hoặc dùng chế độ ẩn danh có
             thể làm mất.
           </li>
-          <li>Nên xuất file sau mỗi kỳ hoặc trước khi đổi máy.</li>
-          <li>Chuyển máy: xuất ở máy cũ, nhập ở máy mới.</li>
+          <li>Nên sao lưu (file .json) sau mỗi kỳ hoặc trước khi đổi máy.</li>
+          <li>Chuyển máy: sao lưu ở máy cũ, khôi phục ở máy mới.</li>
         </ol>
       </section>
 
@@ -469,8 +592,8 @@ export function DataScreen() {
         <div className="row">
           <p style={{ flex: 1, minWidth: 220 }}>
             Nạp bộ dữ liệu minh họa do nhóm tự đặt để thử các chức năng: sinh viên đang học HK2,
-            hoặc sinh viên đã hoàn thành chương trình (HK8, đủ điều kiện tốt nghiệp). Thao tác này
-            ghi đè dữ liệu hiện tại (có 10 giây để hoàn tác).
+            hoặc sinh viên đã hoàn thành chương trình (K25 học chậm, thêm HK9, đủ điều kiện tốt
+            nghiệp). Thao tác này ghi đè dữ liệu hiện tại (có 10 giây để hoàn tác).
           </p>
           {SAMPLES.map((sample) => (
             <button

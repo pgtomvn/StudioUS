@@ -1,6 +1,11 @@
 import { COURSE_BY_ID, GROUPS } from "../../data/curriculum";
+import { SEMESTER_LIMIT, STANDARD_SEMESTERS } from "../../domain/rules";
+import { COHORTS, DEFAULT_COHORT } from "../time";
 import type {
   AppData,
+  Attempt,
+  CourseRecord,
+  CourseStatus,
   ClassEntry,
   ExamEntry,
   GradOptionId,
@@ -18,7 +23,14 @@ const LEGACY_KEYS: Record<string, string> = {
   [SETTINGS_KEY]: "fitquest:settings",
   [CORRUPT_BACKUP_KEY]: "fitquest:data:corrupt",
 };
-export const DATA_VERSION = 2;
+/**
+ * Phiên bản cấu trúc dữ liệu. v3 (28/11/2026): trạng thái Học lại và lịch sử học lại
+ * (`CourseRecord.attempts`), số học kỳ của kế hoạch (`Profile.semesterCount`), khóa K25/K26.
+ * File v1, v2 vẫn đọc được và được chuyển lên v3.
+ */
+export const DATA_VERSION = 3;
+/** Các phiên bản đọc được (đều chuyển lên DATA_VERSION). */
+const READABLE_VERSIONS = [1, 2, 3];
 
 /** Phần tối thiểu của Web Storage mà ứng dụng cần; giúp kiểm thử không cần trình duyệt. */
 export interface KeyValueStore {
@@ -29,6 +41,7 @@ export interface KeyValueStore {
 
 export const THEME_IDS: ThemeId[] = ["sunset", "meadow", "arcade", "midnight", "campus"];
 const GRAD_OPTIONS: GradOptionId[] = ["thesis", "internship", "project"];
+const STATUSES: CourseStatus[] = ["todo", "doing", "retake", "done"];
 const REQUIRED_GROUPS = ["profile", "records", "conditions", "classes", "exams"] as const;
 const GROUP_LABELS: Record<(typeof REQUIRED_GROUPS)[number], string> = {
   profile: "Hồ sơ",
@@ -43,8 +56,9 @@ export function createDefaultData(): AppData {
     version: DATA_VERSION,
     profile: {
       name: "",
-      cohort: "K26",
+      cohort: DEFAULT_COHORT,
       currentSemester: 1,
+      semesterCount: STANDARD_SEMESTERS,
       semesters: {},
       avatar: null,
     },
@@ -150,7 +164,7 @@ function migrateV1(raw: Record<string, unknown>): Record<string, unknown> {
     Array.isArray(list) ? list.map((item) => ({ semester: current, ...item })) : list;
   return {
     ...raw,
-    version: DATA_VERSION,
+    version: 2,
     profile,
     records,
     selections,
@@ -159,16 +173,54 @@ function migrateV1(raw: Record<string, unknown>): Record<string, unknown> {
   };
 }
 
+/**
+ * Phiên bản 2 → 3: thêm trường không bắt buộc (lịch sử học lại, số học kỳ của kế hoạch); phần còn
+ * thiếu được `normalize` bổ sung (số học kỳ lấy theo học kỳ lớn nhất đang dùng, tối thiểu 8).
+ */
+function migrateV2(raw: Record<string, unknown>): Record<string, unknown> {
+  return { ...raw, version: 3 };
+}
+
 /** Bổ sung trường thiếu bằng mặc định; trả null nếu không phải cấu trúc dữ liệu của ứng dụng. */
 function normalize(input: unknown): AppData | null {
   if (!isObject(input)) return null;
-  const raw = input.version === 1 ? migrateV1(input) : input;
+  let raw = input;
+  if (raw.version === 1) raw = migrateV1(raw);
+  if (raw.version === 2) raw = migrateV2(raw);
   if (raw.version !== DATA_VERSION) return null;
   if (!isObject(raw.profile) || !isObject(raw.records) || !isObject(raw.conditions)) return null;
   if (!Array.isArray(raw.classes) || !Array.isArray(raw.exams)) return null;
   const base = createDefaultData();
   const profile = { ...base.profile, ...(raw.profile as Partial<AppData["profile"]>) };
   if (!isObject(profile.semesters)) profile.semesters = {};
+  if (!COHORTS.some((item) => item.id === profile.cohort)) profile.cohort = DEFAULT_COHORT;
+  const records: AppData["records"] = {};
+  for (const [id, value] of Object.entries(raw.records as Record<string, CourseRecord>)) {
+    if (!isObject(value)) continue;
+    const attempts = Array.isArray(value.attempts)
+      ? value.attempts.filter(isAttempt).map(({ semester, score }) => ({ semester, score }))
+      : [];
+    records[id] = {
+      semester: value.semester ?? null,
+      status: STATUSES.includes(value.status) ? value.status : "todo",
+      score: value.score ?? null,
+      ...(attempts.length > 0 ? { attempts } : {}),
+    };
+  }
+  // Số học kỳ: ít nhất 8 và đủ chứa mọi học kỳ đang dùng (file cũ không có trường này).
+  const used = [
+    profile.currentSemester,
+    ...Object.values(records).flatMap((record) => [
+      record.semester ?? 0,
+      ...(record.attempts ?? []).map((item) => item.semester ?? 0),
+    ]),
+    ...(raw.classes as ClassEntry[]).map((item) => Number(item.semester) || 0),
+    ...(raw.exams as ExamEntry[]).map((item) => Number(item.semester) || 0),
+  ];
+  profile.semesterCount = Math.min(
+    SEMESTER_LIMIT,
+    Math.max(STANDARD_SEMESTERS, Number(profile.semesterCount) || 0, ...used),
+  );
   const selections: AppData["selections"] = {};
   if (isObject(raw.selections))
     for (const [group, ids] of Object.entries(raw.selections))
@@ -176,7 +228,7 @@ function normalize(input: unknown): AppData | null {
   return {
     version: DATA_VERSION,
     profile,
-    records: raw.records as AppData["records"],
+    records,
     selections,
     gradOption: GRAD_OPTIONS.includes(raw.gradOption as GradOptionId)
       ? (raw.gradOption as GradOptionId)
@@ -193,6 +245,15 @@ function normalize(input: unknown): AppData | null {
     })),
     meta: { ...base.meta, ...(isObject(raw.meta) ? (raw.meta as Partial<AppData["meta"]>) : {}) },
   };
+}
+
+const isSemester = (value: unknown) =>
+  value === null ||
+  (typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= SEMESTER_LIMIT);
+const isScore = (value: unknown) =>
+  value === null || (typeof value === "number" && value >= 0 && value <= 10);
+function isAttempt(value: unknown): value is Attempt {
+  return isObject(value) && isSemester(value.semester) && isScore(value.score);
 }
 
 export type LoadStatus = "ok" | "empty" | "corrupt" | "unavailable";
@@ -283,10 +344,16 @@ export function summarize(data: AppData): DataSummary {
   };
 }
 
-/** Tên file sao lưu: student_k26_YYYY-MM-DD.json (ngày xuất file). */
-export function exportFileName(date: Date): string {
+export type ExportFormat = "json" | "csv" | "xlsx";
+
+/** Tên file xuất: student_<khóa>_YYYY-MM-DD.<đuôi> (ngày xuất file), VD student_k26_2026-11-28.json. */
+export function exportFileName(
+  date: Date,
+  cohort: string = DEFAULT_COHORT,
+  format: ExportFormat = "json",
+): string {
   const pad = (value: number) => String(value).padStart(2, "0");
-  return `student_k26_${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}.json`;
+  return `student_${cohort.toLowerCase()}_${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}.${format}`;
 }
 
 export type ImportResult =
@@ -310,16 +377,18 @@ export function validateImport(fileName: string, text: string): ImportResult {
       ok: false,
       error: `File thiếu dữ liệu: ${missing.map((group) => GROUP_LABELS[group]).join(", ")}.`,
     };
-  if (raw.version !== DATA_VERSION && raw.version !== 1)
+  if (!READABLE_VERSIONS.includes(raw.version as number))
     return { ok: false, error: "File được tạo bởi phiên bản khác, chưa hỗ trợ." };
 
   let invalid = 0;
   for (const [courseId, record] of Object.entries(isObject(raw.records) ? raw.records : {})) {
     const value = isObject(record) ? record : {};
-    const score = value.score;
-    const scoreOk = score === null || (typeof score === "number" && score >= 0 && score <= 10);
-    const statusOk = ["todo", "doing", "done"].includes(value.status as string);
-    if (!COURSE_BY_ID.has(courseId) || !scoreOk || !statusOk) invalid += 1;
+    const scoreOk = isScore(value.score);
+    const statusOk = STATUSES.includes(value.status as CourseStatus);
+    const attemptsOk =
+      value.attempts === undefined ||
+      (Array.isArray(value.attempts) && value.attempts.every(isAttempt));
+    if (!COURSE_BY_ID.has(courseId) || !scoreOk || !statusOk || !attemptsOk) invalid += 1;
   }
   if (invalid > 0)
     return {

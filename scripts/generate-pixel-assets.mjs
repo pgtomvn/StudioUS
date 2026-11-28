@@ -1055,6 +1055,28 @@ const icons = {
       1,
     );
   },
+  // GPA học kỳ: cùng dáng trái tim của GPA tổng nhưng màu xanh để phân biệt
+  heartTerm(c) {
+    c.ascii(
+      [
+        "................",
+        "................",
+        "...bb....bb.....",
+        "..bwbb..bbbb....",
+        ".bwbbbbbbbbbB...",
+        ".bbbbbbbbbbbB...",
+        ".bbbbbbbbbbbB...",
+        "..bbbbbbbbbB....",
+        "...bbbbbbbB.....",
+        "....bbbbbB......",
+        ".....bbbB.......",
+        "......bB........",
+      ],
+      P,
+      1,
+      1,
+    );
+  },
   coin(c) {
     c.ellipse(7.5, 7.5, 5.6, 5.6, P.g);
     c.ellipse(8.2, 8.2, 4.6, 4.6, P.G, (x, y) => x + y > 17);
@@ -1161,6 +1183,32 @@ const icons = {
       P,
       0,
       3,
+    );
+  },
+  calculator(c) {
+    // máy tính bỏ túi: màn hình xanh có số, các phím trắng, phím "=" màu cam
+    c.ascii(
+      [
+        "..SSSSSSSSSSSS..",
+        "..SssssssssssS..",
+        "..SseeeeeeeesS..",
+        "..SseeeeEeEesS..",
+        "..SseeeeeeeesS..",
+        "..SssssssssssS..",
+        "..SswwswwswwsS..",
+        "..SswwswwswwsS..",
+        "..SssssssssssS..",
+        "..SswwswwswwsS..",
+        "..SswwswwswwsS..",
+        "..SssssssssssS..",
+        "..SswwswwsoosS..",
+        "..SswwswwsoosS..",
+        "..SssssssssssS..",
+        "..SSSSSSSSSSSS..",
+      ],
+      P,
+      0,
+      0,
     );
   },
   faction(c) {

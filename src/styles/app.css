@@ -1281,14 +1281,14 @@ input[type="time"] {
 }
 .stat-strip {
   display: grid;
-  /* GPA và Hạng chung một hàng; Kinh nghiệm (thanh tiến độ) một hàng riêng bên dưới */
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 14px 28px;
+  /* GPA tổng, GPA học kỳ và Hạng chia đều một hàng; Kinh nghiệm (thanh tiến độ) một hàng riêng */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 18px;
 }
 .stat-strip .stat:last-child {
   grid-column: 1 / -1;
 }
-.stat-strip .stat:first-child .stat-value {
+.stat-strip .stat:nth-child(-n + 2) .stat-value {
   white-space: nowrap;
 }
 .stat-label {
@@ -1307,6 +1307,32 @@ input[type="time"] {
 /* GPA và Hạng in hoa (VD “CHƯA CÓ”, “GIỎI”); số không bị ảnh hưởng */
 .stat-value {
   text-transform: uppercase;
+}
+/* “(thang 10)” sau nhãn GPA: chữ thường, nhỏ hơn */
+.stat-label .stat-scale {
+  text-transform: none;
+  font-size: 0.85em;
+  opacity: 0.85;
+}
+/* “(thang 10)” cùng hàng với nhãn, không xuống dòng */
+.stat-strip .stat-label {
+  white-space: nowrap;
+  gap: 4px;
+  font-size: 0.82rem;
+  letter-spacing: 0;
+}
+/* Thẻ hồ sơ hẹp (VD màn hình 1024–1366 px): ba ô không đủ chỗ cho nhãn một hàng nên hai GPA
+   một hàng, Hạng xuống hàng dưới; thẻ đủ rộng thì ba ô chia đều. */
+.profile-card {
+  container-type: inline-size;
+}
+@container (max-width: 540px) {
+  .stat-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .stat-strip .stat:nth-child(3) {
+    grid-column: 1 / -1;
+  }
 }
 .stat-value small {
   font-family: var(--font-body);
@@ -1597,7 +1623,7 @@ input[type="time"] {
 .course-head,
 .course-row {
   display: grid;
-  grid-template-columns: 34px 92px minmax(140px, 1fr) 34px 44px 108px 158px 84px 36px 40px 96px;
+  grid-template-columns: 34px 92px minmax(140px, 1fr) 34px 44px 108px 158px 84px 40px 96px;
   gap: 8px;
   align-items: center;
   padding: 4px 8px;
@@ -1864,9 +1890,6 @@ input[type="time"] {
 .course-row .c-cap,
 .course-row .c-none {
   display: none;
-}
-.course-row .c-grade {
-  font-weight: 400;
 }
 .course-row.is-unchosen .c-fields > * {
   opacity: 0.45;
@@ -2505,7 +2528,7 @@ input[type="time"] {
     grid-column: 1 / -1;
     font-size: 1.15rem;
   }
-  /* Hàng ô nhập: Học kỳ, Trạng thái gọn; Chữ, Hệ 4, Kết quả là ô riêng có nhãn (giống cột bảng rộng). */
+  /* Hàng ô nhập: Học kỳ, Trạng thái gọn; Hệ 4, Kết quả là ô riêng có nhãn (giống cột bảng rộng). */
   .course-row .c-fields {
     grid-column: 1 / -1;
     display: flex;
@@ -2522,7 +2545,6 @@ input[type="time"] {
   .course-row .c-score {
     flex: 0 1 96px;
   }
-  .course-row .c-letter,
   .course-row .c-p4 {
     flex: 0 0 auto;
     min-width: 48px;
@@ -2537,8 +2559,7 @@ input[type="time"] {
     font-size: 1.05rem;
     box-shadow: 0 0 0 3px var(--line);
   }
-  /* chữ điểm, hệ 4 thẳng hàng với các ô nhập cao 32px */
-  .course-row .c-letter,
+  /* hệ 4 thẳng hàng với các ô nhập cao 32px */
   .course-row .c-p4 {
     line-height: 32px;
   }
@@ -2554,13 +2575,6 @@ input[type="time"] {
   .course-row .c-result-body {
     min-height: 32px;
   }
-  .course-row .c-grade {
-    font-family: "Handjet", "VT323", monospace;
-    font-weight: 800;
-    font-size: 1.35rem;
-    line-height: 1;
-  }
-  .course-row .c-letter,
   .course-row .c-p4 {
     text-align: left;
   }
@@ -2740,7 +2754,11 @@ input[type="time"] {
     font-size: 1.9rem;
   }
   .stat-strip {
+    /* điện thoại: hai GPA một hàng, Hạng một hàng, Kinh nghiệm một hàng */
     grid-template-columns: 1fr 1fr;
+  }
+  .stat-strip .stat:nth-child(3) {
+    grid-column: 1 / -1;
   }
   .stat-strip .stat:last-child {
     grid-column: 1 / -1;
@@ -2793,7 +2811,6 @@ input[type="time"] {
   .course-row .c-score {
     flex: 0 1 80px;
   }
-  .course-row .c-letter,
   .course-row .c-p4 {
     min-width: 38px;
   }
@@ -3196,5 +3213,228 @@ input[type="time"] {
   }
   .sound-label {
     flex-basis: 100%;
+  }
+}
+
+/* ============================================================ góp ý 28/11 (UIBUILD-25) */
+/* Tiêu đề trang Học phần kèm nút Tính thử điểm */
+.screen-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.calc-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+/* Dòng “Học n lần · Lịch sử học lại” dưới tên môn */
+.c-history {
+  display: block;
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.88rem;
+  color: var(--ink);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  text-align: left;
+  cursor: pointer;
+}
+.c-history:hover,
+.c-history:focus-visible {
+  color: var(--accent-hi);
+}
+
+/* Popup tính thử điểm */
+.calc-weights {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 140px));
+  gap: 12px;
+  margin: 10px 0 12px;
+}
+.calc-section {
+  margin: 0 0 12px;
+  padding: 8px 12px 12px;
+  border: 0;
+  background: var(--well);
+  color: var(--well-ink);
+  box-shadow: 0 0 0 3px var(--line);
+}
+.calc-title {
+  margin-bottom: 2px;
+  font-weight: 700;
+}
+.calc-section.is-off {
+  padding: 10px 12px;
+}
+.calc-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px 96px 36px;
+  gap: 8px;
+  align-items: start;
+  margin-top: 6px;
+}
+/* ô số + lỗi ngay bên dưới (giống ô điểm ở bảng học phần) */
+.calc-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+.calc-cell .input {
+  width: 100%;
+}
+.calc-cell .field-error {
+  margin-top: 4px;
+  padding: 2px 6px;
+  background: var(--bad);
+  color: var(--bad-ink);
+  box-shadow: 0 0 0 2px var(--line);
+  line-height: 1.3;
+}
+.calc-head {
+  font-size: 0.82rem;
+  opacity: 0.8;
+}
+.calc-remove {
+  padding-left: 0;
+  padding-right: 0;
+}
+.calc-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 10px;
+}
+.calc-bad {
+  color: var(--bad);
+  font-weight: 700;
+}
+.calc-bonus {
+  max-width: 420px;
+}
+.calc-bonus .input {
+  max-width: 120px;
+}
+.calc-result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 28px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--panel-hi);
+  box-shadow: 0 0 0 3px var(--line);
+}
+.calc-result .field-label {
+  display: block;
+}
+.calc-score {
+  font-size: 2rem;
+  line-height: 1.1;
+}
+.calc-result .badge {
+  padding: 4px 14px;
+  font-size: 1.05rem;
+}
+.calc-errors {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--bad);
+}
+
+/* Popup lịch sử học lại */
+.history {
+  margin: 10px 0;
+  padding: 0;
+  list-style: none;
+}
+.history-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: var(--well);
+  color: var(--well-ink);
+}
+.history-row.is-current {
+  box-shadow: 0 0 0 3px var(--accent);
+}
+.history-row .h-turn {
+  min-width: 52px;
+  font-weight: 700;
+}
+.history-row .h-score {
+  min-width: 34px;
+  font-size: 1.2rem;
+}
+.history-row .h-remove {
+  margin-left: auto;
+}
+
+/* Trang Dữ liệu: số học kỳ, chọn định dạng file */
+.sem-count-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.sem-count-value {
+  min-width: 52px;
+}
+.export-seg {
+  margin: 0 0 8px;
+  padding: 0;
+}
+
+/* Chú thích khi di chuột (nút Tải file lịch) */
+.tip-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.tip {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 30;
+  width: min(320px, calc(100vw - 32px));
+  padding: 10px 12px;
+  background: var(--panel-hi);
+  color: var(--ink);
+  font-size: 0.92rem;
+  line-height: 1.4;
+  box-shadow:
+    0 0 0 3px var(--line),
+    4px 4px 0 3px var(--shadow);
+  /* display: none (không chỉ ẩn) để chú thích không làm trang có thanh cuộn ngang trên điện thoại */
+  display: none;
+  pointer-events: none;
+}
+.tip-wrap:hover .tip,
+.tip-wrap:focus-within .tip {
+  display: block;
+}
+
+@media (max-width: 767px) {
+  .calc-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 36px;
+  }
+  .calc-row > :first-child {
+    grid-column: 1 / -1;
+  }
+  .calc-head {
+    display: none;
+  }
+  .calc-open {
+    padding-left: 10px;
+    padding-right: 10px;
   }
 }

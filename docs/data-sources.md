@@ -92,3 +92,5 @@ Giỏi ≥ 8.0, Khá ≥ 7.0, Trung bình ≥ 5.0, Yếu ≥ 4.0, Kém < 4.0); m
 ứng dụng theo danh sách.
 
 Gói font Galmuri được tải bằng `npm pack galmuri@2.40.3` vào thư mục tạm khi người dùng yêu cầu thử font pixel tiếng Việt dễ đọc hơn (20/11/2026); SHA-256 của gói: `7d6b2b8534d157dd5e4eb8e01145f7388c0383bed8a96f5ec719eaacf1f86816`, của file đã cắt `src/assets/fonts/galmuri9-vi.woff2`: `a0811e19edb2d7a6ecddcffc536e20255fcf1ac3af92ead5b57bd4db05612f09`. Mô tả gói ghi font dựa trên thiết kế font của Nintendo DS; giấy phép kèm gói là SIL OFL 1.1. Cách cắt và kiểm tra độ phủ ở `src/assets/fonts/README.md`.
+
+**Cập nhật 28/11/2026 (UIBUILD-25):** báo cáo phân tích yêu cầu có trường “lần học” (Bảng 3) và nhắc “điểm trung bình học kỳ” ở Bảng 4 nhưng không nêu công thức. Ứng dụng tạm dùng: GPA học kỳ = Σ(TC × điểm hệ 10) / Σ TC của mọi học phần thuộc 138 TC có điểm trong học kỳ đó, kể cả chưa đạt và lần học trước của môn học lại; học lại thì điểm lần gần nhất được tính vào TC tích lũy và GPA tổng (mỗi học phần tính một lần, mục 4.2). **Chưa xác minh** với Quy chế đào tạo 2026; cần đối chiếu Quy chế gốc (cách tính điểm trung bình học kỳ, điểm học lại/cải thiện) trước khi chốt.
